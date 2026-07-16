@@ -1,0 +1,69 @@
+# Human-in-the-loop patterns
+
+Channels bots can pause mid-run and wait for a human, then continue. There are
+two mechanisms; pick by where the pause originates.
+
+## 1. `awaitChoice` — the bot asks
+
+Use when *your code* wants to ask the user something and block on the answer.
+Common for confirming an irreversible action inside a tool handler.
+
+```tsx
+import { Section, Actions, Button } from "@copilotkit/channels-ui";
+
+async function confirmDeploy(thread, env: string) {
+  const ok = await thread.awaitChoice<boolean>(
+    <Section>
+      Deploy to <b>{env}</b>? This is irreversible.
+      <Actions>
+        <Button value={true} style="primary">Ship it</Button>
+        <Button value={false} style="danger">Cancel</Button>
+      </Actions>
+    </Section>,
+  );
+  return ok;
+}
+```
+
+- `awaitChoice<T>(ui)` posts `ui` and **blocks** until the user activates a
+  control, resolving to that control's `value` (typed as `T`).
+- Because a tool handler gets the live `thread`, you can call `awaitChoice`
+  directly inside `defineBotTool(...).handler` to gate the tool on approval.
+
+## 2. `onInterrupt` + `resume` — the agent pauses
+
+Use when the *agent* pauses itself (e.g. a LangGraph-style interrupt during
+`thread.runAgent()`). Register a handler for the interrupt, render a prompt, then
+`resume` with the value the agent expects.
+
+```ts
+bot.onInterrupt<{ question: string }>("ask_human", async ({ thread, payload }) => {
+  const answer = await thread.awaitChoice<string>(
+    /* a <Select> or <Button> group built from payload.question */
+  );
+  await thread.resume(answer); // agent continues from where it paused
+});
+```
+
+- The interrupt `event` name matches what the agent emits.
+- `thread.resume(value)` re-enters the run loop with `value`; it returns the next
+  `MessageRef` (or `undefined`).
+
+## Why handlers survive (or don't) a restart
+
+Interactive handlers are keyed by **content-stable IDs**:
+`"ck:" + sha1(name | path | stableStringify(props)).slice(0, 16)`. The same
+rendered control always produces the same ID, so a click maps back to the right
+handler.
+
+The binding itself lives in an **`ActionStore`**:
+
+- Default is `InMemoryActionStore` — ephemeral; bindings are lost on restart, so
+  a button clicked after a redeploy won't resolve.
+- For durability, implement the `ActionStore` interface (persist to Redis,
+  Postgres, etc.) and pass it as `createBot({ actionStore })`. Then handlers on
+  **registered components** survive restarts.
+
+Rule of thumb: for a demo or a short-lived prompt, in-memory is fine. For buttons
+that must work hours later or across deploys, configure a durable store and use
+registered components rather than one-off inline closures.

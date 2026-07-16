@@ -1,0 +1,26 @@
+{
+  "skill_name": "build-channels-bot",
+  "evals": [
+    {
+      "id": 0,
+      "name": "slack-oncall",
+      "prompt": "I'm building a Slack bot for my team using the CopilotKit Channels SDK (@copilotkit/channels). When someone @mentions it, it should answer using our agent. It also needs a tool that looks up who is currently on call for a given team name. Write the complete bot setup code in TypeScript and save it as bot.ts.",
+      "expected_output": "A bot.ts using createBot with a slack adapter, agent factory, defineBotTool for on-call lookup with a Standard Schema, and bot.onMention that calls thread.runAgent(). No invented APIs.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "hitl-confirm",
+      "prompt": "Using the CopilotKit Channels SDK, I want a confirmation with Approve and Cancel buttons before my bot runs a destructive tool that deletes a database. Show me the code for the tool that renders the human-in-the-loop confirmation and only proceeds if the user approves. Save it as delete-tool.ts.",
+      "expected_output": "A defineBotTool whose handler calls thread.awaitChoice with an Actions/Button tree (values true/false) and only deletes on approval. Uses channels-ui components.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "hn-top",
+      "prompt": "Build a CopilotKit Channels SDK slash command called /top that posts the top 5 Hacker News stories as one interactive message. Each story should show its title and points, with a button that opens the story link. Include the Hacker News fetch. Save it as top-command.ts.",
+      "expected_output": "bot.onCommand('top', ...) (or defineBotCommand) that fetches HN top stories and posts a Message with per-story Section/Fields and a link Button (url=...). Uses channels-ui JSX.",
+      "files": []
+    }
+  ]
+}
