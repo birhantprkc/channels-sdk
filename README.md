@@ -12,7 +12,7 @@
 [![Built on AG-UI](https://img.shields.io/badge/built%20on-AG--UI%20Protocol-6E56CF.svg)](https://github.com/ag-ui-protocol/ag-ui)
 [![Powers OpenTag](https://img.shields.io/badge/powers-OpenTag-black.svg)](https://github.com/CopilotKit/OpenTag)
 
-**[▶ Watch the 90-second launch video](./assets/launch.mp4)**
+**[▶ Watch the launch video](./assets/launch.mp4)**
 
 [Quick start](#quick-start) · [Concepts](#core-concepts) · [How it works](#how-it-works) · [Platforms](#supported-platforms) · [OpenTag](#see-it-in-production-opentag) · [Deploy](#deploy-opentag)
 
