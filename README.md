@@ -22,7 +22,7 @@
 
 > **Channels SDK powers [OpenTag](https://github.com/CopilotKit/OpenTag)** — an open-source, self-hosted on-call triage assistant for Slack and Microsoft Teams. If you want to see the SDK driving a real, complete app rather than snippets, read OpenTag. [Jump to details ↓](#see-it-in-production-opentag)
 
-## The pitch
+## What it is
 
 Most "AI in Slack" today is a bot that echoes text back at you. But the agent already knows how to *do things* — look up a record, run a query, draft a change. What it can't do is show you a button, ask you to pick one of three options, or render a chart inline and pause for your approval before it acts.
 
