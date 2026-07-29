@@ -2,9 +2,9 @@
 
 # Channels SDK
 
-<img src="./assets/hero-any-agent-any-channel.png" alt="Any agent. Any channel. — Slack, Discord, Teams, Telegram, WhatsApp, and Google Chat" width="820">
+<img src="./assets/hero-any-agent-any-channel.png" alt="Any agent. Any channel." width="820">
 
-**Build AI agents that live in Slack, Teams, Discord, Telegram, WhatsApp, and Google Chat — write the bot once, and it renders native interactive UI on every platform.**
+**Build AI agents that live in Slack, Microsoft Teams, Discord, Telegram, and WhatsApp — write the agent once, and it renders native interactive UI on every platform.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![status: preview](https://img.shields.io/badge/status-preview-orange.svg)](#status--roadmap)
@@ -14,31 +14,31 @@
 
 **[▶ Watch the 90-second launch video](./assets/launch.mp4)**
 
-[Quick start](#quick-start) · [Concepts](#core-concepts) · [How it works](#how-it-works) · [Platforms](#supported-platforms) · [OpenTag](#see-it-in-production-opentag) · [Deploy](#deploy-opentag)
+[Quick start](#quick-start) · [Concepts](#core-concepts) · [How it works](#how-it-works) · [Platforms](#supported-platforms) · [OpenTag](#see-it-in-production-opentag)
 
 </div>
 
 ---
 
-> **Channels SDK powers [OpenTag](https://github.com/CopilotKit/OpenTag)** — the open-source alternative to Claude in Slack. If you want to see the SDK driving a real, complete app rather than snippets, read OpenTag. [Jump to details ↓](#see-it-in-production-opentag)
+> **Channels SDK powers [OpenTag](https://github.com/CopilotKit/OpenTag)** — an open-source, self-hosted on-call triage assistant for Slack and Microsoft Teams. If you want to see the SDK driving a real, complete app rather than snippets, read OpenTag. [Jump to details ↓](#see-it-in-production-opentag)
 
 ## The pitch
 
 Most "AI in Slack" today is a bot that echoes text back at you. But the agent already knows how to *do things* — look up a record, run a query, draft a change. What it can't do is show you a button, ask you to pick one of three options, or render a chart inline and pause for your approval before it acts.
 
-Doing that today means hand-wiring an agent loop into a platform SDK: Block Kit JSON for Slack, embeds and components for Discord, Adaptive Cards for Teams — three different UI models, three different interaction-callback formats, plus your own plumbing for tool calls, streaming, human-in-the-loop, and conversation state.
+Doing that today means hand-wiring an agent loop into a platform SDK: Block Kit JSON for Slack, components for Discord, Adaptive Cards for Teams — three different UI models, three different interaction-callback formats, plus your own plumbing for tool calls, streaming, human-in-the-loop, and conversation state.
 
-**Channels SDK is the layer that removes that plumbing.** You write one bot — handlers, tools, and JSX-rendered messages — and it runs on any messaging platform through a swappable adapter. The agent drives real, interactive UI in the conversation, not just text. It's the same idea behind [CopilotKit](https://github.com/CopilotKit/CopilotKit) — *agents that drive UI, not chat windows bolted on the side* — brought to the surfaces your users already live in. It's the engine behind [OpenTag](https://github.com/CopilotKit/OpenTag), the open-source, self-hosted alternative to Claude in Slack.
+**Channels SDK is the layer that removes that plumbing.** You write one Channel — handlers, tools, and JSX-rendered messages — and it runs on any messaging platform, either through CopilotKit Intelligence (managed credentials and delivery) or through a swappable adapter you own. The agent drives real, interactive UI in the conversation, not just text. It's the same idea behind [CopilotKit](https://github.com/CopilotKit/CopilotKit) — *agents that drive UI, not chat windows bolted on the side* — brought to the surfaces your users already live in.
 
 ```ts
-bot.onMention(async ({ thread }) => {
+channel.onMessage(async ({ thread }) => {
   await thread.runAgent(); // agent replies, calls tools, renders buttons, pauses for input
 });
 ```
 
 ## Same agent, every channel
 
-The same bot renders native, interactive UI on each platform — a real tool call and a real card, not a wall of text:
+The same Channel renders native, interactive UI on each platform — a real tool call and a real card, not a wall of text:
 
 | Slack | Discord | Teams |
 | --- | --- | --- |
@@ -46,95 +46,237 @@ The same bot renders native, interactive UI on each platform — a real tool cal
 
 ## Quick start
 
+Everything ships in one batteries-included package. `@copilotkit/channels` bundles the engine, the JSX vocabulary, and every platform adapter behind subpath exports.
+
 ```sh
-pnpm add @copilotkit/channels @copilotkit/channels-ui
-pnpm add @copilotkit/channels-slack   # the reference platform adapter
+npm install --save-exact @copilotkit/channels@0.4.0 @copilotkit/runtime@1.64.1
 ```
 
-```ts
-import { createBot, defineBotTool } from "@copilotkit/channels";
-import { slack } from "@copilotkit/channels-slack";
-import { Section, Actions, Button } from "@copilotkit/channels-ui";
-import { z } from "zod";
-import { makeAgent } from "./agent";
+> **ESM only.** The package and all its subpaths are ESM-only — set `"type": "module"` and use `import`. `require()` is not supported. Node 22+ is required for managed delivery (it needs the global `WebSocket`).
 
-const bot = createBot({
-  adapters: [
-    slack({
-      botToken: process.env.SLACK_BOT_TOKEN!,
-      appToken: process.env.SLACK_APP_TOKEN!,
-    }),
-  ],
-  agent: (threadId) => makeAgent(threadId),
+Point the JSX factory at the package so `<Message>` / `<Button>` are statically type-checked:
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@copilotkit/channels"
+  }
+}
+```
+
+### 1. The agent
+
+The agent is any AG-UI-compatible backend. Return a **fresh agent per thread** — never share one stateful instance across conversations:
+
+```ts title="agent.ts"
+import { BuiltInAgent } from "@copilotkit/runtime/v2";
+
+export function makeAgent(threadId: string) {
+  const agent = new BuiltInAgent({ model: "openai:gpt-5.4-mini" });
+  agent.threadId = threadId;
+  return agent;
+}
+```
+
+Swap in `HttpAgent` from `@ag-ui/client` (LangGraph, CrewAI, Mastra, Pydantic AI, Google ADK, Claude Agent SDK, …) or `LangGraphHttpAgent` from `@copilotkit/runtime/langgraph` — the Channel code below doesn't change.
+
+### 2. The Channel
+
+```tsx title="channel.tsx"
+import { createChannel, defineChannelTool } from "@copilotkit/channels";
+import { Message, Header, Section, Markdown, Actions, Button } from "@copilotkit/channels/ui";
+import { z } from "zod";
+import { makeAgent } from "./agent.js";
+
+export const channel = createChannel({
+  // Must match the Channel code you created in the Intelligence dashboard.
+  name: "deploy-bot",
+  provider: "slack",
+  agent: makeAgent,
   tools: [
-    defineBotTool({
+    defineChannelTool({
       name: "deploy",
       description: "Trigger a deploy for the given environment.",
       parameters: z.object({ env: z.enum(["staging", "production"]) }),
       async handler({ env }, { thread }) {
         // Show an interactive confirmation before doing anything irreversible.
-        const ok = await thread.awaitChoice<boolean>(
-          <Section>
-            Deploy to <b>{env}</b>?
+        await thread.post(
+          <Message accent="#F59E0B">
+            <Header>{`Confirm deploy: ${env}`}</Header>
+            <Section>
+              <Markdown>{`Ship to **${env}**?`}</Markdown>
+            </Section>
             <Actions>
-              <Button value={true} style="primary">Ship it</Button>
-              <Button value={false} style="danger">Cancel</Button>
+              <Button
+                style="primary"
+                onClick={async ({ thread }) => {
+                  await thread.post(await deploy(env));
+                }}
+              >
+                Ship it
+              </Button>
+              <Button
+                style="danger"
+                onClick={async ({ thread }) => {
+                  await thread.post("Cancelled.");
+                }}
+              >
+                Cancel
+              </Button>
             </Actions>
-          </Section>,
+          </Message>,
         );
-        if (!ok) return "Cancelled by the user.";
-        return await deploy(env);
+        // This string is what the *model* reads back — tell it to stop and wait.
+        return "Showed a deploy confirmation card. Waiting for the user to decide.";
       },
     }),
   ],
 });
 
-// Reply whenever the bot is @-mentioned; the agent does the rest.
-bot.onMention(async ({ thread }) => {
-  await thread.runAgent();
+// Intelligence only delivers turns your agent should answer (a mention or a DM).
+channel.onMessage(async ({ thread, message }) => {
+  await thread.runAgent({ prompt: message.text });
 });
-
-await bot.start();
 ```
 
-That's a complete, working Slack agent: it answers when mentioned, can call the `deploy` tool, and pauses mid-run to render a real confirmation with buttons — no Block Kit JSON, no interaction-payload parsing, no state store to wire up.
+### 3. Run it
+
+The Channel is **runtime-driven** — there is no `channel.start()`. You declare it on a `CopilotRuntime` and the runtime owns its lifecycle:
+
+```ts title="server.ts"
+import { createServer } from "node:http";
+import { CopilotRuntime, CopilotKitIntelligence } from "@copilotkit/runtime/v2";
+import { createCopilotNodeListener } from "@copilotkit/runtime/v2/node";
+import { channel } from "./channel.js";
+
+const runtime = new CopilotRuntime({
+  agents: {},
+  intelligence: new CopilotKitIntelligence({
+    apiKey: process.env.INTELLIGENCE_API_KEY!,
+  }),
+  identifyUser: () => ({ id: "channels-runtime", name: "Channels Runtime" }),
+  channels: [channel],
+});
+
+const listener = createCopilotNodeListener({ runtime, basePath: "/api/copilotkit" });
+const channels = listener.channels!;
+const server = createServer(listener);
+
+// `ready()` lazily opens the Realtime Gateway connection. It can resolve with
+// setup still required, so check `status()` before declaring victory.
+await channels.ready({ timeoutMs: 30_000 });
+const status = channels.status();
+if (status.overall !== "online") throw new Error(`Channel not online: ${JSON.stringify(status)}`);
+
+server.listen(3000, () => console.log("Channel online"));
+
+const shutdown = async () => {
+  await channels.stop();
+  if (server.listening) server.close();
+};
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
+```
+
+```sh
+node --env-file=.env --import tsx server.ts
+```
+
+Mention the app in Slack. It answers in the thread, can call `deploy`, and renders a real confirmation card — no Block Kit JSON, no interaction-payload parsing, no state store to wire up.
+
+> **Keep the process alive.** Managed delivery holds a persistent gateway connection, so it needs a long-running Node host or container. A serverless request handler can't own it.
+
+## Two ways to connect a platform
+
+Every Channel runs through the CopilotKit runtime, so both paths need an Intelligence key. The difference is **who holds the platform credentials and owns the socket**.
+
+| | Managed (Intelligence) | Direct adapter |
+| --- | --- | --- |
+| Declared as | `createChannel({ name, provider, agent })` | `createChannel({ name, adapters, agent })` |
+| Platform tokens | Held by Intelligence — none in your app | You supply them to the adapter |
+| Ingress / egress | Intelligence receives the event and does the credentialed send | Your process runs the socket or webhook |
+| Delivery, retries, dedup, ordering | Managed | Yours |
+| Files and media | Fetched, size-checked, handed to the agent as content parts | You fetch and cap them |
+| Adding a platform | Attach it in the dashboard, no code change | Add another adapter |
+| Providers | Slack, Microsoft Teams | Slack, Teams, Discord, Telegram, WhatsApp |
+
+A direct adapter moves the platform connection into your process, but the runtime still owns the Channel lifecycle and still needs an Intelligence connection. Direct traffic does not traverse the managed gateway's delivery, retry, and durability layer — that reliability becomes yours. Don't mix the managed and direct paths on the same Channel.
+
+```ts title="Direct Slack adapter"
+import { createChannel } from "@copilotkit/channels";
+import { slack, defaultSlackContext, defaultSlackTools } from "@copilotkit/channels/slack";
+
+export const channel = createChannel({
+  name: "support-direct",
+  agent: makeAgent,
+  tools: [...defaultSlackTools],
+  context: [...defaultSlackContext],
+  adapters: [
+    slack({
+      botToken: process.env.SLACK_BOT_TOKEN!, // xoxb-…
+      appToken: process.env.SLACK_APP_TOKEN!, // xapp-…
+      respondTo: {
+        directMessages: true,
+        appMentions: { reply: "thread" },
+        threadReplies: "mentionsOnly",
+      },
+    }),
+  ],
+});
+```
+
+Wire it into the same `CopilotRuntime` block from step 3. For direct adapters, `provider` is ignored. One direct Channel may carry several adapters; its `name` must still be unique on that runtime.
 
 ## Core concepts
 
-Five pieces, each with one job.
+### 1. The Channel — routing
 
-### 1. The Bot — routing
-
-`createBot()` returns a `Bot` you attach handlers to:
+`createChannel()` returns a `Channel` you attach handlers to:
 
 | Handler | Fires when… |
 | --- | --- |
 | `onMention(fn)` / `onMessage(fn)` | a turn comes in (mentions take priority over plain messages) |
-| `onThreadStarted(fn)` | a conversation surface opens — good for a welcome message |
-| `onCommand(name, fn)` | a slash command is invoked |
+| `onThreadStarted(fn)` | a conversation surface opens (e.g. Slack's assistant pane) — good for a greeting or suggested prompts |
+| `onCommand(cmd)` / `onCommand(name, fn)` | a slash command is invoked |
 | `onInteraction(id, fn)` | a bound action (button/select/input) is triggered |
 | `onInterrupt(event, fn)` | the agent pauses mid-run and hands control back to you |
+| `onReaction(fn)` / `onReaction(emoji, fn)` | a user adds or removes an emoji reaction |
+| `onModalSubmit(callbackId, fn)` | a modal is submitted — return `{ errors }` to keep it open |
+| `onModalClose(callbackId, fn)` | a modal is dismissed |
 
 ### 2. The Thread — the conversation handle
 
 Every handler receives a `thread`. It's how you render and drive the conversation:
 
 ```ts
-await thread.post(<Section>Working on it…</Section>);   // render JSX
-await thread.stream(tokenStream);                        // stream tokens live
-await thread.runAgent();                                 // run the agent loop
-const value = await thread.awaitChoice(picker);          // HITL: block for a choice
-await thread.setTitle("Incident #4821");                 // rename the surface
+await thread.post(<Section>Working on it…</Section>);  // render JSX
+await thread.update(ref, ui);                          // repaint in place
+await thread.stream(tokenStream);                      // stream tokens live
+await thread.runAgent({ prompt: message.text });        // run the agent loop
+await thread.resume(value);                             // hand an answer back to a paused run
+const value = await thread.awaitChoice(picker);         // block for a choice (direct adapters)
+await thread.postEphemeral(user, ui, { fallbackToDM: true });
+await thread.setState({ step: "awaiting_approval" });   // per-thread state
+await thread.getMessages();                             // read conversation history
+await thread.react(ref, "white_check_mark");
+await thread.setTitle("Incident #4821");
+await thread.setSuggestedPrompts([{ title: "Triage", message: "Triage this thread" }]);
+await thread.postFile({ bytes, filename: "report.pdf" });
 ```
 
-`post`/`update` render your JSX, mint content-stable handler IDs, and bind their events for you. `runAgent` drives the agent's run/tool/interrupt loop and renders each step as it streams.
+`post`/`update` render your JSX, mint content-stable handler IDs, and bind their events for you. `runAgent` drives the agent's run/tool/interrupt loop and renders each step as it streams. Capability-gated methods (`setTitle`, `react`, `getMessages`, `lookupUser`, …) return `{ ok: false }` or an empty result on surfaces that don't support them instead of throwing.
 
 ### 3. Tools — what the agent can do
 
 Tools are plain functions with a typed parameter schema. They accept any [Standard Schema](https://standardschema.dev) validator (Zod, Valibot, ArkType), and their handler gets the live `thread` — so a tool can post UI, ask a question, or run a HITL flow while it executes:
 
 ```ts
-defineBotTool({
+defineChannelTool({
   name: "read_thread",
   description: "Read the messages in the current conversation.",
   parameters: z.object({}),
@@ -143,6 +285,10 @@ defineBotTool({
   },
 });
 ```
+
+The return value is what the **agent** reads back, not the user. Return the raw data for a data tool (the SDK serializes it), the actual error text on failure, or a short natural-language confirmation for a tool that posted a card — don't hand-stringify, and don't return boilerplate like `{ ok: true }`.
+
+Slash commands are defined the same way with `defineChannelCommand`, and get an optional `options` schema that maps to native typed arguments on surfaces that have them (Discord) while arriving as `ctx.text` on those that don't (Slack).
 
 ### 4. Interactive UI — JSX that renders everywhere
 
@@ -165,53 +311,106 @@ You describe messages as JSX. The same tree renders as Block Kit on Slack, compo
 </Message>
 ```
 
-The vocabulary: `Message`, `Header`, `Section`, `Markdown`, `Fields`/`Field`, `Context`, `Divider`, `Image`, `Table`/`Row`/`Cell`, `Chart`, and the interactive `Actions`, `Button`, `Select`, and `Input`. Inline `onClick` / `onSelect` / `onSubmit` handlers are bound automatically.
+The vocabulary: `Message`, `Header`, `Section`, `Markdown`, `Fields`/`Field`, `Context`, `Divider`, `Image`, `Table`/`Row`/`Cell`, `Chart`, and the interactive `Actions`, `Button`, `Select`, and `Input`. Inline `onClick` / `onSelect` / `onSubmit` handlers are bound automatically, and `<Message onReaction>` catches reactions on a message you posted.
+
+Modals get their own vocabulary — `Modal`, `TextInput`, `ModalSelect`, `ModalSelectOption`, `RadioButtons` — opened via `openModal(view)` from an interaction or command context, and routed back by `callbackId` to `onModalSubmit` / `onModalClose`. Modals are a direct-adapter feature; they are not available on managed Slack and Teams today.
 
 ### 5. Context — what the agent knows
 
-`ContextEntry` values are `{ description, value }` pairs injected into the agent's prompt per run — the conversation's channel, the caller's role, whatever grounds the turn.
+`ContextEntry` values are `{ description, value }` pairs injected into the agent's prompt per run — the conversation's platform, the caller's role, whatever grounds the turn. Pass them on `createChannel({ context })` for every run, or on `thread.runAgent({ context })` for one. Each adapter also exports its own defaults (e.g. `defaultSlackContext`) with formatting and tagging guidance for that surface.
+
+### 6. State — what survives a restart
+
+`store` groups persistence, per-thread state, transcripts, and turn-lock tuning:
+
+```ts
+createChannel({
+  name: "release-bot",
+  agent: makeAgent,
+  components: [ConfirmWrite],        // register components so clicks survive a restart
+  store: {
+    adapter: new MemoryStore(),      // swap for a durable StateStore (Redis, Postgres)
+    state: z.object({ step: z.string() }),  // types thread.state()/setState() and validates writes
+    identity: ({ author }) => author.email ?? null,   // cross-platform identity key
+    transcripts: { retention: "30d", maxPerUser: 500 },
+    onLockConflict: "drop",
+  },
+});
+```
+
+The `StateStore` contract covers `kv`, `list`, `lock`, `dedup`, and `queue` — one interface behind per-thread state, action snapshots, transcripts, turn locks, and inbound dedup. The default `MemoryStore` is in-process and lost on restart.
+
+Because interactive handlers are keyed by **content-stable IDs** (a hash of the component's name, path, and props), a button clicked an hour after it was posted still resolves to the right handler. Register the component in `components` and configure a durable store and it resolves after a restart too; an unregistered inline handler degrades to "action expired".
+
+`Transcripts` is a separate, cross-platform history store keyed by a resolved identity (e.g. email), so the same user's conversation carries across Slack and Teams. Set `store.identity` + `store.transcripts` and pass `thread.runAgent({ transcript: true })` to auto-bridge prior history into the run.
+
+## Human-in-the-loop
+
+Two shapes, depending on how the platform is connected.
+
+**Post-and-resume** works everywhere, managed included. The tool posts a card and ends the agent's turn; the click resumes it:
+
+```tsx
+<Button
+  style="primary"
+  onClick={async ({ thread, message }) => {
+    await thread.update(message.ref, <Message accent="#27AE60"><Header>Approved</Header></Message>);
+    await thread.runAgent({ prompt: "The user approved. Go ahead." });
+  }}
+>
+  Approve
+</Button>
+```
+
+**Blocking** is available on direct adapters, where `thread.supportsBlockingChoice` is `true`. `awaitChoice` posts the picker and waits inline:
+
+```ts
+const { confirmed } = await thread.awaitChoice<{ confirmed: boolean }>(
+  <ConfirmWrite action={action} />,
+);
+if (confirmed) await write();
+```
+
+A managed Channel delivers one turn at a time and does not block, so use post-and-resume there. When the agent pauses itself mid-run with an `on_interrupt` event, handle it with `channel.onInterrupt(name, fn)` and hand the answer back with `thread.resume(value)`.
 
 ## How it works
 
 The core engine is platform-agnostic. Every surface is a **`PlatformAdapter`** — a small contract that translates between the platform's API and the engine's message IR:
 
-<img src="./assets/architecture.png" alt="One agent architecture, native to every channel — Channels (CopilotKit + AG-UI) at the center connecting Slack, Teams, Discord, Google Chat, Telegram, and WhatsApp" width="820">
+<img src="./assets/architecture.png" alt="One agent architecture, native to every channel — Channels (CopilotKit + AG-UI) at the center connecting messaging platforms" width="820">
 
 ```
-  Slack / Teams / Discord / Google Chat / Telegram / WhatsApp / your own
-        │  (PlatformAdapter)
+  Slack / Teams / Discord / Telegram / WhatsApp / your own
+        │  (CopilotKit Intelligence, or a direct PlatformAdapter)
         ▼
-  ┌─────────────────────────────────────────┐
+  ┌───────────────────────────────────────────┐
   │  Channels engine                          │
   │  routing · tools · agent loop · actions   │
-  │  JSX → message IR · HITL · action store   │
-  └─────────────────────────────────────────┘
+  │  JSX → message IR · HITL · state store    │
+  └───────────────────────────────────────────┘
         ▲
         │  agent (AG-UI run / tool / interrupt loop)
-   your agent — @copilotkit/runtime, LangGraph, CrewAI, custom, …
+   your agent — @copilotkit/runtime, LangGraph, CrewAI, Mastra, custom, …
 ```
 
-The agent it drives is any AG-UI-compatible backend. OpenTag runs [`@copilotkit/runtime`](https://www.npmjs.com/package/@copilotkit/runtime) as the agent backend (on its own port) and points the bot at it — but a LangGraph, CrewAI, or fully custom agent slots in the same way.
+The agent it drives is any AG-UI-compatible backend. OpenTag runs a Python LangGraph agent over AG-UI and points the Channel at it — but a `BuiltInAgent` in the same process, CrewAI, Mastra, or a fully custom agent slots in the same way.
 
-Because interactive handlers are keyed by **content-stable IDs** (a hash of the component's name, path, and props), a button clicked an hour after it was posted still resolves to the right handler. Bindings live in an `ActionStore` — in-memory by default, or your own durable implementation so handlers survive a restart.
-
-Adding a new platform means implementing `PlatformAdapter` — receive turns, render `BotNode[]`, decode interactions — without touching any bot logic. [`@copilotkit/channels-slack`](https://www.npmjs.com/package/@copilotkit/channels-slack) is the reference implementation to read.
+`CopilotRuntime` owns the Channel lifecycle in both connection models. Adding a new platform directly means implementing `PlatformAdapter` — receive turns, render `ChannelNode[]`, decode interactions — without touching any Channel logic.
 
 ## Supported platforms
 
-Slack first — the same bot code also runs on Teams, Discord, Telegram, WhatsApp, and Google Chat. Each platform is its own adapter package, `@copilotkit/channels-<platform>`.
+Each platform is a subpath export of `@copilotkit/channels`.
 
-| Platform | Adapter | Notes |
-| --- | --- | --- |
-| **Slack** | `@copilotkit/channels-slack` | Reference adapter — full interactive UI: buttons, selects, multi-select, modals-as-choices |
-| **Microsoft Teams** | `@copilotkit/channels-teams` | Adaptive Cards, field labels, multi-select (`isMultiSelect`) |
-| **Discord** | `@copilotkit/channels-discord` | Components, embeds, link buttons |
-| **Telegram** | `@copilotkit/channels-telegram` | Degrades multi-select and link buttons to the nearest equivalent |
-| **WhatsApp** | `@copilotkit/channels-whatsapp` | Degrades to single-select where rich controls aren't expressible |
-| **Google Chat** | `@copilotkit/channels-google-chat` | Cards v2 rendering |
-| **Your own surface** | Bring an adapter | Implement `PlatformAdapter` — the engine and your bot don't change |
+| Platform | Import | Managed | Notes |
+| --- | --- | --- | --- |
+| **Slack** | `@copilotkit/channels/slack` | ✅ GA | Reference adapter — full interactive UI: buttons, selects, multi-select, modals, native streaming, assistant pane, ephemeral |
+| **Microsoft Teams** | `@copilotkit/channels/teams` | ✅ | Adaptive Cards, field labels, multi-select (`isMultiSelect`); image-only outbound attachments |
+| **Discord** | `@copilotkit/channels/discord` | Coming soon | Components V2, embeds, link buttons, native typed slash commands; text-only modals |
+| **Telegram** | `@copilotkit/channels/telegram` | Direct only | Long-polling or webhook; degrades multi-select and link buttons; no modals |
+| **WhatsApp** | `@copilotkit/channels/whatsapp` | Coming soon | Cloud API webhook; degrades to single-select where rich controls aren't expressible |
+| **Your own surface** | Bring an adapter | — | Implement `PlatformAdapter` — the engine and your Channel don't change |
 
-Feature-detection is built in: a `<Select multi>` renders as `multi_static_select` on Slack, max-values on Discord, `isMultiSelect` on Teams, and degrades to single-select on Telegram/WhatsApp. The renderer is total — a platform that can't render a node skips it rather than throwing.
+Feature-detection is built in: a `<Select multi>` renders as `multi_static_select` on Slack, max-values on Discord, `isMultiSelect` on Teams, and degrades to single-select on Telegram/WhatsApp. The renderer is total — a platform that can't render a node skips it rather than throwing. Emoji reactions are normalized to one canonical name across every adapter, with the platform-native token preserved on `rawEmoji`.
 
 ## Why not just use Bolt / discord.js directly?
 
@@ -220,125 +419,66 @@ Those SDKs are excellent *transports* — and Channels SDK adapters are built on
 | You still hand-write with a raw platform SDK | Channels SDK gives you |
 | --- | --- |
 | The agent run / tool-call / streaming loop | `thread.runAgent()` |
-| Block Kit / embeds / Adaptive Cards, per platform | One JSX tree, rendered natively on each |
+| Block Kit / components / Adaptive Cards, per platform | One JSX tree, rendered natively on each |
 | Parsing interaction payloads and routing them | Inline `onClick` / `awaitChoice`, auto-bound |
 | Human-in-the-loop pause/resume | `awaitChoice` / `onInterrupt` / `resume` |
-| Conversation + action state across restarts | `ActionStore` + conversation store |
-| Rewriting all of it for the next platform | Swap the adapter |
+| Conversation, action, and thread state across restarts | `StateStore` + registered `components` |
+| Cross-platform history for the same person | `Transcripts` + `store.identity` |
+| Platform credentials, retries, dedup, ordering | Managed delivery via Intelligence |
+| Rewriting all of it for the next platform | Swap the adapter, or attach it in the dashboard |
 
 The category this replaces isn't a library — it's the pile of glue between "an agent that could act" and "a chat surface that lets a human see and steer it."
 
 ## See it in production: OpenTag
 
-[**OpenTag**](https://github.com/CopilotKit/OpenTag) is the flagship app built on Channels SDK — an open-source, self-hosted alternative to Claude in Slack:
+[**OpenTag**](https://github.com/CopilotKit/OpenTag) is the flagship app built on Channels SDK — an open-source, self-hosted on-call triage assistant for Slack and Microsoft Teams, with research available on demand. It's the best reference for how the pieces in this README fit together in a complete app: generative UI, a LangGraph interrupt with a resumable confirmation card before any Linear or Notion write, tool execution, file-aware prompts, and graceful shutdown.
 
-> *Run your own AI agent inside Slack: it reads a thread, answers, calls your tools, and renders rich results right in the conversation.*
-
-Unlike a bot locked to one vendor's model, OpenTag works with any LLM and any agent framework, and you own the end-to-end logic. It's the best reference for how the pieces in this README fit together in a complete app — generative UI, human-in-the-loop approval gates, tool execution, and threading across Slack, Discord, Telegram, and WhatsApp.
-
-It's wired from these packages:
+Its shape is exactly the one above: one `CopilotKitIntelligence`, one `CopilotRuntime`, and one adapter-free managed Channel, with a Python LangGraph agent over AG-UI as the backend.
 
 ```sh
 pnpm install
-pnpm runtime    # the agent backend (@copilotkit/runtime) on :8200
-pnpm channel    # run the bot via the managed Intelligence Gateway
-# or
-pnpm dev        # run the bot fully self-hosted
+cp .env.example .env    # OPENAI_API_KEY, AGENT_URL, INTELLIGENCE_API_KEY
+pnpm dev                # Python agent (reload) + Node runtime (watch), concurrently
 ```
 
-For teams that would rather not operate the gateway themselves, a fully-hosted managed service is on the waitlist (see the OpenTag repo). The SDK itself is and stays open source and self-hostable.
-
-## Deploy OpenTag
-
-OpenTag is a sample project you run with the **Channels SDK for the chat surface** and **[CopilotKit Intelligence](https://www.copilotkit.ai/opentag-managed) for the production layer**. Intelligence hosts the gateway your bot connects through and provides thread persistence, analytics, and continuous learning — so you don't operate that infrastructure yourself.
-
-**Prerequisites**
-
-- Node 18+ and pnpm
-- A Slack workspace where you can install an app
-- An LLM provider key (OpenTag is model-agnostic)
-- A CopilotKit Intelligence account (self-hosted or CopilotKit Cloud)
-
-**1. Clone and install**
-
-```sh
-git clone https://github.com/CopilotKit/OpenTag.git
-cd OpenTag
-pnpm install
-```
-
-**2. Create a Slack app (Socket Mode)**
-
-Create an app, enable **Socket Mode**, add a bot user, and subscribe to the `app_mention` (and `message`) events plus any slash commands you want. Install it to your workspace, then copy the **Bot token** (`xoxb-…`) and **App-level token** (`xapp-…`). OpenTag ships a Slack app manifest in the repo — use it for the exact scopes and events rather than adding them by hand.
-
-**3. Configure environment**
-
-```sh
-cp .env.example .env
-```
-
-Fill in `.env`. At minimum you'll set:
-
-- `SLACK_BOT_TOKEN=xoxb-…`
-- `SLACK_APP_TOKEN=xapp-…`
-- your LLM provider key
-- the **CopilotKit Intelligence** credentials listed in `.env.example` (your Intelligence gateway / API key)
-
-> The exact Intelligence variable names live in OpenTag's `.env.example` — copy them verbatim; don't guess.
-
-**4. Start the agent backend**
-
-```sh
-pnpm runtime    # @copilotkit/runtime on :8200
-```
-
-**5. Connect the bot through CopilotKit Intelligence**
-
-```sh
-pnpm channel    # runs the bot over the managed Intelligence Gateway (recommended)
-```
-
-Use `pnpm dev` instead to run the bot fully self-hosted, without the gateway.
-
-**6. Try it**
-
-@mention the bot in any channel thread:
-
-> `@YourBot summarize this thread and file it as a bug`
-
-**Going to production**
-
-- CopilotKit Intelligence runs **self-hosted** or in **CopilotKit Cloud** — either way the SDK stays open source.
-- A fully-hosted, managed OpenTag is on the **waitlist**: [go.copilotkit.ai/opentag-managed-gh](https://go.copilotkit.ai/opentag-managed-gh).
-
-> Heads up: these steps need your own Slack tokens and Intelligence account, so run them yourself — a deploy that renders interactive UI in your real workspace shouldn't be driven with someone else's credentials.
+You create one managed Channel in the Intelligence dashboard and configure its Slack and Teams adapters there; no platform tokens live in the app. Read [OpenTag's README](https://github.com/CopilotKit/OpenTag) for the full platform setup — the Intelligence project, the Channel name, and the runtime API key.
 
 ## Packages
 
-| Package | What it is |
+The umbrella package is the supported entry point. Its subpaths are the public API:
+
+| Import | What it is |
 | --- | --- |
-| `@copilotkit/channels` | The platform-agnostic engine: `createBot`, `Bot`, `Thread`, tools, context, action store |
-| `@copilotkit/channels-ui` | The JSX vocabulary (`Message`, `Section`, `Button`, `Select`, `Chart`, …) |
-| `@copilotkit/channels-slack` | The Slack platform adapter (reference implementation) |
-| `@copilotkit/channels-<platform>` | One adapter per surface — `-teams`, `-discord`, `-telegram`, `-whatsapp`, `-google-chat` |
-| `@copilotkit/runtime` | The agent backend the bot drives (the AG-UI runtime) — or bring your own agent |
+| `@copilotkit/channels` | The platform-agnostic engine: `createChannel`, `Channel`, `Thread`, `defineChannelTool`, `defineChannelCommand`, `MemoryStore`, `Transcripts` (re-exports the UI vocabulary) |
+| `@copilotkit/channels/ui` | The JSX vocabulary (`Message`, `Section`, `Button`, `Select`, `Chart`, `Modal`, …) |
+| `@copilotkit/channels/slack` · `/teams` · `/discord` · `/telegram` · `/whatsapp` | One adapter per surface, plus its renderers, listener, stores, built-in tools and context, and limits |
+| `@copilotkit/channels/intelligence` | The managed adapter (`intelligenceAdapter`) — normally wired for you by the runtime |
+| `@copilotkit/channels/testing` | `FakeAdapter` / `FakeAgent` for testing Channels without a real platform |
+| `@copilotkit/runtime` | The runtime that owns the Channel lifecycle, and `BuiltInAgent` if you want the agent in-process |
+
+The individual `@copilotkit/channels-core`, `-ui`, and `-<platform>` packages are also published and versioned in lockstep, but prefer the umbrella package and its subpaths.
 
 ## Relationship to CopilotKit and AG-UI
 
 Channels SDK is part of [CopilotKit](https://github.com/CopilotKit/CopilotKit), the open-source, MIT-licensed stack for agent-native applications, and the team behind the [AG-UI Protocol](https://github.com/ag-ui-protocol/ag-ui) — the open, event-based protocol for how agents talk to user-facing apps (adopted by Google, LangChain, AWS, Microsoft, Mastra, and PydanticAI).
 
-CopilotKit's React hooks put agent-driven UI in your web app. Channels SDK puts the same pattern — agents that render real UI and pause for human input — into the messaging surfaces where teams already work. The agent loop it drives (runs, tool calls, interrupts) is the AG-UI model; any AG-UI-compatible agent slots in. For production, **CopilotKit Intelligence** is the optional managed layer around the SDK (thread persistence, analytics, the Intelligence Gateway used by OpenTag's `pnpm channel`), self-hostable or in CopilotKit Cloud — the SDK stays fully open source either way.
+CopilotKit's React hooks put agent-driven UI in your web app. Channels SDK puts the same pattern — agents that render real UI and pause for human input — into the messaging surfaces where teams already work. The agent loop it drives (runs, tool calls, interrupts) is the AG-UI model; any AG-UI-compatible agent slots in. **CopilotKit Intelligence** is the layer that holds platform credentials and owns managed delivery, plus thread persistence, durable state, and observability — self-hostable or in CopilotKit Cloud. The SDK stays fully open source either way.
 
 ## Status & roadmap
 
-Channels SDK is in **preview**. The core engine, the Slack adapter, and the JSX vocabulary work today; APIs may still shift before a stable release.
+Channels SDK is in **preview** at `0.4.0`. APIs may still shift before a stable release; upgrade `@copilotkit/channels` and `@copilotkit/runtime` together.
 
 - [x] Platform-agnostic engine — routing, tools, agent loop, action binding
-- [x] JSX message vocabulary with cross-platform rendering
-- [x] Human-in-the-loop via `awaitChoice` / `onInterrupt` / `resume`
-- [x] Slack reference adapter (+ Teams, Discord, Telegram, WhatsApp, Google Chat)
+- [x] JSX message vocabulary with cross-platform rendering, plus modals
+- [x] Human-in-the-loop — post-and-resume everywhere, `awaitChoice` on direct adapters
+- [x] Managed delivery via CopilotKit Intelligence — Slack GA, Microsoft Teams
+- [x] Direct adapters for Slack, Teams, Discord, Telegram, WhatsApp
+- [x] Pluggable `StateStore` — per-thread state, durable actions, locks, dedup
+- [x] Cross-platform `Transcripts` keyed by identity
 - [x] A complete reference app — [OpenTag](https://github.com/CopilotKit/OpenTag)
-- [ ] Durable action-store recipes (Redis, Postgres)
+- [ ] Managed Discord and WhatsApp
+- [ ] Durable `StateStore` recipes (Redis, Postgres)
+- [ ] Proactive delivery to subscribed conversations
 - [ ] Adapter authoring guide
 
 ## Contributing
