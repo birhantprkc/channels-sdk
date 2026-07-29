@@ -47,10 +47,8 @@ The same Channel renders native, interactive UI on each platform — a real tool
 Everything ships in one batteries-included package. `@copilotkit/channels` bundles the engine, the JSX vocabulary, and every platform adapter behind subpath exports.
 
 ```sh
-npm i @copilotkit/channels
+npm i @copilotkit/channels @copilotkit/runtime
 ```
-
-The runtime that owns the Channel lifecycle is a separate install — `npm i @copilotkit/runtime`. Upgrade the two together.
 
 > **ESM only.** The package and all its subpaths are ESM-only — set `"type": "module"` and use `import`. `require()` is not supported. Node 22+ is required for managed delivery (it needs the global `WebSocket`).
 
