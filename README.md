@@ -24,15 +24,13 @@
 
 ## What it is
 
-Most "AI in Slack" today is a bot that echoes text back at you. But the agent already knows how to *do things* — look up a record, run a query, draft a change. What it can't do is show you a button, ask you to pick one of three options, or render a chart inline and pause for your approval before it acts.
+Channels SDK runs an AI agent inside a messaging platform. You write one Channel — handlers, tools, and JSX messages — and it runs on Slack, Teams, Discord, Telegram, and WhatsApp.
 
-Doing that today means hand-wiring an agent loop into a platform SDK: Block Kit JSON for Slack, components for Discord, Adaptive Cards for Teams — three different UI models, three different interaction-callback formats, plus your own plumbing for tool calls, streaming, human-in-the-loop, and conversation state.
-
-**Channels SDK is the layer that removes that plumbing.** You write one Channel — handlers, tools, and JSX-rendered messages — and it runs on any messaging platform, either through CopilotKit Intelligence (managed credentials and delivery) or through a swappable adapter you own. The agent drives real, interactive UI in the conversation, not just text. It's the same idea behind [CopilotKit](https://github.com/CopilotKit/CopilotKit) — *agents that drive UI, not chat windows bolted on the side* — brought to the surfaces your users already live in.
+The agent doesn't just reply with text. It can render a button, ask you to pick an option, or show a chart and pause for your approval before it acts — as native UI on each platform. Doing that by hand means wiring an agent loop into every platform SDK: Block Kit for Slack, components for Discord, Adaptive Cards for Teams, plus your own plumbing for tool calls, streaming, human-in-the-loop, and state.
 
 ```ts
 channel.onMessage(async ({ thread }) => {
-  await thread.runAgent(); // agent replies, calls tools, renders buttons, pauses for input
+  await thread.runAgent(); // replies, calls tools, renders buttons, pauses for input
 });
 ```
 
@@ -140,7 +138,16 @@ export const channel = createChannel({
 
 // Intelligence only delivers turns your agent should answer (a mention or a DM).
 channel.onMessage(async ({ thread, message }) => {
-  await thread.runAgent({ prompt: message.text });
+  await thread.runAgent({
+    // Combine text and attachments explicitly when the turn carries both.
+    prompt: message.contentParts?.length
+      ? [
+          ...(message.text ? [{ type: "text" as const, text: message.text }] : []),
+          ...message.contentParts,
+        ]
+      : message.text,
+    context: [{ description: "Originating platform", value: message.platform }],
+  });
 });
 ```
 
@@ -158,6 +165,12 @@ const runtime = new CopilotRuntime({
   agents: {},
   intelligence: new CopilotKitIntelligence({
     apiKey: process.env.INTELLIGENCE_API_KEY!,
+    // Hosted Intelligence supplies both by default. For a self-hosted deployment
+    // override BOTH — the REST and realtime planes are separate hosts, so the ws
+    // URL can't be derived from the API URL, and setting only one silently leaves
+    // the other pointed at the managed host.
+    apiUrl: process.env.INTELLIGENCE_API_URL,
+    wsUrl: process.env.INTELLIGENCE_GATEWAY_WS_URL,
   }),
   identifyUser: () => ({ id: "channels-runtime", name: "Channels Runtime" }),
   channels: [channel],
@@ -183,13 +196,30 @@ process.once("SIGINT", shutdown);
 process.once("SIGTERM", shutdown);
 ```
 
+```dotenv title=".env"
+INTELLIGENCE_API_KEY=cpk-…   # project-scoped key, from API Keys in the Intelligence sidebar
+CHANNEL_CODE=deploy-bot      # must match the Channel code exactly
+PORT=3000
+```
+
 ```sh
 node --env-file=.env --import tsx server.ts
 ```
 
-Mention the app in Slack. It answers in the thread, can call `deploy`, and renders a real confirmation card — no Block Kit JSON, no interaction-payload parsing, no state store to wire up.
+Intelligence flips from **Waiting for runtime** to **Online**. Mention the app in Slack — it answers in the thread, can call `deploy`, and renders a real confirmation card. No Block Kit JSON, no interaction-payload parsing, no state store to wire up.
 
 > **Keep the process alive.** Managed delivery holds a persistent gateway connection, so it needs a long-running Node host or container. A serverless request handler can't own it.
+
+<details>
+<summary><b>Troubleshooting</b></summary>
+
+- **Stuck at "Waiting for runtime"** — `CHANNEL_CODE` doesn't match the Intelligence Channel code, `provider` is wrong, or the API key belongs to a different project.
+- **Startup reports `setup_required`** — finish the platform credential steps in Intelligence. `ready()` settling does *not* mean the platform is online; that's why you check `status()`.
+- **Online but never receives a mention** — invite the app to the channel, and confirm the `xoxb-…` and `xapp-…` tokens came from the *same* Slack app. Intelligence can't detect a valid-but-mismatched pair during setup.
+- **The agent mixes conversations** — `makeAgent` must return a fresh agent per `threadId`, and assign that id where your framework requires it.
+- **Channel sits in `connecting` forever on self-hosted** — a wrong `wsUrl` doesn't raise; it times out. Override `apiUrl` and `wsUrl` together, as bare base URLs with no `/api` or `/socket` path.
+
+</details>
 
 ## Two ways to connect a platform
 
