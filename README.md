@@ -4,7 +4,7 @@
 
 <img src="./assets/hero-any-agent-any-channel.png" alt="Any agent. Any channel." width="820">
 
-**Build AI agents that live in Slack, Microsoft Teams, Discord, Telegram, and WhatsApp — write the agent once, and it renders native interactive UI on every platform.**
+**Build AI agents that live in Slack, Microsoft Teams, Discord, Telegram, and WhatsApp — with Google Chat, iMessage, and SMS on the way — write the agent once, and it renders native interactive UI on every platform.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![status: preview](https://img.shields.io/badge/status-preview-orange.svg)](#status--roadmap)
@@ -12,7 +12,7 @@
 [![Built on AG-UI](https://img.shields.io/badge/built%20on-AG--UI%20Protocol-6E56CF.svg)](https://github.com/ag-ui-protocol/ag-ui)
 [![Powers OpenTag](https://img.shields.io/badge/powers-OpenTag-black.svg)](https://github.com/CopilotKit/OpenTag)
 
-**[▶ Watch the 90-second launch video](./assets/launch.mp4)**
+**[▶ Watch the launch video](./assets/launch.mp4)** · 58s
 
 [Quick start](#quick-start) · [Concepts](#core-concepts) · [How it works](#how-it-works) · [Platforms](#supported-platforms) · [OpenTag](#see-it-in-production-opentag)
 
@@ -40,15 +40,17 @@ The same Channel renders native, interactive UI on each platform — a real tool
 
 | Slack | Discord | Teams |
 | --- | --- | --- |
-| <img src="./assets/demo-slack.png" alt="KiteBot in Slack: a search_docs tool call rendering an interactive launch-checklist card"> | <img src="./assets/demo-discord.png" alt="KiteBot in Discord: a read_logs tool call rendering a rolled-back deploy status card"> | <img src="./assets/demo-teams.png" alt="KiteBot in Teams: a fetch_report tool call rendering a Q3 sales metrics card"> |
+| <img src="./assets/demo-slack.png" alt="KiteBot in Slack: reads an attached screenshot, shows its reasoning, then renders a Block Kit card whose actions are the approval gate — resolved to File as bug"> | <img src="./assets/demo-discord.png" alt="KiteBot in Discord: a read_logs tool call rendering a generated bar chart of the week's failed deploys"> | <img src="./assets/demo-teams.png" alt="KiteBot in Teams: an .xlsx goes in, an Adaptive Card of Q3 metrics comes back"> |
 
 ## Quick start
 
 Everything ships in one batteries-included package. `@copilotkit/channels` bundles the engine, the JSX vocabulary, and every platform adapter behind subpath exports.
 
 ```sh
-npm install --save-exact @copilotkit/channels@0.4.0 @copilotkit/runtime@1.64.1
+npm i @copilotkit/channels
 ```
+
+The runtime that owns the Channel lifecycle is a separate install — `npm i @copilotkit/runtime`. Upgrade the two together.
 
 > **ESM only.** The package and all its subpaths are ESM-only — set `"type": "module"` and use `import`. `require()` is not supported. Node 22+ is required for managed delivery (it needs the global `WebSocket`).
 
@@ -438,7 +440,13 @@ Each platform is a subpath export of `@copilotkit/channels`.
 | **Discord** | `@copilotkit/channels/discord` | Coming soon | Components V2, embeds, link buttons, native typed slash commands; text-only modals |
 | **Telegram** | `@copilotkit/channels/telegram` | Direct only | Long-polling or webhook; degrades multi-select and link buttons; no modals |
 | **WhatsApp** | `@copilotkit/channels/whatsapp` | Coming soon | Cloud API webhook; degrades to single-select where rich controls aren't expressible |
+| **Google Chat** | — | Planned | Cards v2 rendering; adapter not published yet |
+| **iMessage** | — | Planned | Adapter not published yet |
+| **SMS** | — | Planned | Adapter not published yet |
 | **Your own surface** | Bring an adapter | — | Implement `PlatformAdapter` — the engine and your Channel don't change |
+
+Rows with an empty **Import** column have no subpath export in `0.4.0` yet — they are
+on the roadmap, not installable today. Everything with an import path is shipping.
 
 Feature-detection is built in: a `<Select multi>` renders as `multi_static_select` on Slack, max-values on Discord, `isMultiSelect` on Teams, and degrades to single-select on Telegram/WhatsApp. The renderer is total — a platform that can't render a node skips it rather than throwing. Emoji reactions are normalized to one canonical name across every adapter, with the platform-native token preserved on `rawEmoji`.
 
@@ -507,6 +515,7 @@ Channels SDK is in **preview** at `0.4.0`. APIs may still shift before a stable 
 - [x] Cross-platform `Transcripts` keyed by identity
 - [x] A complete reference app — [OpenTag](https://github.com/CopilotKit/OpenTag)
 - [ ] Managed Discord and WhatsApp
+- [ ] Google Chat, iMessage, and SMS adapters
 - [ ] Durable `StateStore` recipes (Redis, Postgres)
 - [ ] Proactive delivery to subscribed conversations
 - [ ] Adapter authoring guide
