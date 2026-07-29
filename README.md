@@ -12,9 +12,9 @@
 [![Built on AG-UI](https://img.shields.io/badge/built%20on-AG--UI%20Protocol-6E56CF.svg)](https://github.com/ag-ui-protocol/ag-ui)
 [![Powers OpenTag](https://img.shields.io/badge/powers-OpenTag-black.svg)](https://github.com/CopilotKit/OpenTag)
 
-https://github.com/user-attachments/assets/98300c69-d4c5-4367-b6a1-a191426d7605
-
 [Quick start](#quick-start) · [Concepts](#core-concepts) · [How it works](#how-it-works) · [Platforms](#supported-platforms) · [OpenTag](#see-it-in-production-opentag)
+
+https://github.com/user-attachments/assets/98300c69-d4c5-4367-b6a1-a191426d7605
 
 </div>
 
@@ -22,7 +22,7 @@ https://github.com/user-attachments/assets/98300c69-d4c5-4367-b6a1-a191426d7605
 
 > **Channels SDK powers [OpenTag](https://github.com/CopilotKit/OpenTag)** — an open-source, self-hosted on-call triage assistant for Slack and Microsoft Teams. If you want to see the SDK driving a real, complete app rather than snippets, read OpenTag. [Jump to details ↓](#see-it-in-production-opentag)
 
-## What it is
+## What is Channels SDK?
 
 Channels SDK runs an AI agent inside a messaging platform. You write one Channel — handlers, tools, and JSX messages — and it runs on Slack, Teams, Discord, Telegram, and WhatsApp.
 
