@@ -7,7 +7,7 @@
 **Build AI agents that live in Slack, Microsoft Teams, Discord, Telegram, and WhatsApp — with Google Chat, iMessage, and SMS on the way — write the agent once, and it renders native interactive UI on every platform.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
-[![status: preview](https://img.shields.io/badge/status-preview-orange.svg)](#status--roadmap)
+![status: preview](https://img.shields.io/badge/status-preview-orange.svg)
 [![npm](https://img.shields.io/npm/v/@copilotkit/channels.svg?label=%40copilotkit%2Fchannels)](https://www.npmjs.com/package/@copilotkit/channels)
 [![Built on AG-UI](https://img.shields.io/badge/built%20on-AG--UI%20Protocol-6E56CF.svg)](https://github.com/ag-ui-protocol/ag-ui)
 [![Powers OpenTag](https://img.shields.io/badge/powers-OpenTag-black.svg)](https://github.com/CopilotKit/OpenTag)
@@ -51,6 +51,8 @@ npm i @copilotkit/channels @copilotkit/runtime
 ```
 
 > **ESM only.** The package and all its subpaths are ESM-only — set `"type": "module"` and use `import`. `require()` is not supported. Node 22+ is required for managed delivery (it needs the global `WebSocket`).
+>
+> **Preview.** APIs may still shift before a stable release. Upgrade `@copilotkit/channels` and `@copilotkit/runtime` together.
 
 Point the JSX factory at the package so `<Message>` / `<Button>` are statically type-checked:
 
@@ -444,7 +446,7 @@ Each platform is a subpath export of `@copilotkit/channels`.
 | **Your own surface** | Bring an adapter | — | Implement `PlatformAdapter` — the engine and your Channel don't change |
 
 Rows with an empty **Import** column have no subpath export in `0.4.0` yet — they are
-on the roadmap, not installable today. Everything with an import path is shipping.
+planned, not installable today. Everything with an import path is shipping.
 
 Feature-detection is built in: a `<Select multi>` renders as `multi_static_select` on Slack, max-values on Discord, `isMultiSelect` on Teams, and degrades to single-select on Telegram/WhatsApp. The renderer is total — a platform that can't render a node skips it rather than throwing. Emoji reactions are normalized to one canonical name across every adapter, with the platform-native token preserved on `rawEmoji`.
 
@@ -499,24 +501,6 @@ The individual `@copilotkit/channels-core`, `-ui`, and `-<platform>` packages ar
 Channels SDK is part of [CopilotKit](https://github.com/CopilotKit/CopilotKit), the open-source, MIT-licensed stack for agent-native applications, and the team behind the [AG-UI Protocol](https://github.com/ag-ui-protocol/ag-ui) — the open, event-based protocol for how agents talk to user-facing apps (adopted by Google, LangChain, AWS, Microsoft, Mastra, and PydanticAI).
 
 CopilotKit's React hooks put agent-driven UI in your web app. Channels SDK puts the same pattern — agents that render real UI and pause for human input — into the messaging surfaces where teams already work. The agent loop it drives (runs, tool calls, interrupts) is the AG-UI model; any AG-UI-compatible agent slots in. **CopilotKit Intelligence** is the layer that holds platform credentials and owns managed delivery, plus thread persistence, durable state, and observability — self-hostable or in CopilotKit Cloud. The SDK stays fully open source either way.
-
-## Status & roadmap
-
-Channels SDK is in **preview** at `0.4.0`. APIs may still shift before a stable release; upgrade `@copilotkit/channels` and `@copilotkit/runtime` together.
-
-- [x] Platform-agnostic engine — routing, tools, agent loop, action binding
-- [x] JSX message vocabulary with cross-platform rendering, plus modals
-- [x] Human-in-the-loop — post-and-resume everywhere, `awaitChoice` on direct adapters
-- [x] Managed delivery via CopilotKit Intelligence — Slack GA, Microsoft Teams
-- [x] Direct adapters for Slack, Teams, Discord, Telegram, WhatsApp
-- [x] Pluggable `StateStore` — per-thread state, durable actions, locks, dedup
-- [x] Cross-platform `Transcripts` keyed by identity
-- [x] A complete reference app — [OpenTag](https://github.com/CopilotKit/OpenTag)
-- [ ] Managed Discord and WhatsApp
-- [ ] Google Chat, iMessage, and SMS adapters
-- [ ] Durable `StateStore` recipes (Redis, Postgres)
-- [ ] Proactive delivery to subscribed conversations
-- [ ] Adapter authoring guide
 
 ## Contributing
 
