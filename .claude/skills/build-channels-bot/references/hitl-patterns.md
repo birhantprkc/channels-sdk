@@ -9,17 +9,18 @@ Use when *your code* wants to ask the user something and block on the answer.
 Common for confirming an irreversible action inside a tool handler.
 
 ```tsx
-import { Section, Actions, Button } from "@copilotkit/channels-ui";
+import { Message, Section, Markdown, Actions, Button } from "@copilotkit/channels";
+import type { Thread } from "@copilotkit/channels";
 
-async function confirmDeploy(thread, env: string) {
+async function confirmDeploy(thread: Thread, env: string) {
   const ok = await thread.awaitChoice<boolean>(
-    <Section>
-      Deploy to <b>{env}</b>? This is irreversible.
+    <Message accent="#E01E5A">
+      <Section><Markdown>Deploy to **{env}**? This is irreversible.</Markdown></Section>
       <Actions>
         <Button value={true} style="primary">Ship it</Button>
         <Button value={false} style="danger">Cancel</Button>
       </Actions>
-    </Section>,
+    </Message>,
   );
   return ok;
 }
@@ -27,6 +28,9 @@ async function confirmDeploy(thread, env: string) {
 
 - `awaitChoice<T>(ui)` posts `ui` and **blocks** until the user activates a
   control, resolving to that control's `value` (typed as `T`).
+- There are **no lowercase intrinsic tags** — this JSX runtime declares an empty
+  `IntrinsicElements`, so `<b>`, `<span>`, `<div>` are compile errors. Emphasis
+  goes inside `<Markdown>`.
 - Because a tool handler gets the live `thread`, you can call `awaitChoice`
   directly inside `defineChannelTool(...).handler` to gate the tool on approval.
 

@@ -3,7 +3,7 @@ name: build-channels-bot
 description: >-
   Build an AI bot with the CopilotKit Channels SDK (@copilotkit/channels) — a
   platform-agnostic engine for agents that live in Slack, Teams, Discord,
-  Telegram, WhatsApp, and Google Chat and render native interactive UI. It's the
+  Telegram, and WhatsApp and render native interactive UI. It's the
   engine behind OpenTag, the open-source alternative to Claude in Slack. Use this
   whenever the user wants to
   create, scaffold, or extend a Channels SDK bot; wire an agent into Slack/
@@ -25,7 +25,7 @@ and can pause for human input mid-run.
 
 This API is recent and not reliably in model memory. **Do not guess the API from
 what a Slack/Discord SDK usually looks like** — the shapes below are the real
-ones, verified against `@copilotkit/channels@0.6.0`. When in doubt, prefer the
+ones, verified against `@copilotkit/channels@0.6.1`. When in doubt, prefer the
 exact names here over anything remembered.
 
 > **Naming:** the factory is `createChannel`, not `createBot`; tools are
@@ -40,7 +40,7 @@ exact names here over anything remembered.
 2. **Thread** — the per-conversation handle passed to every handler; you render
    and drive the conversation through it.
 3. **Tools** — typed functions the agent can call (`defineChannelTool`).
-4. **UI** — JSX from `@copilotkit/channels-ui` that renders natively per platform.
+4. **UI** — JSX from `@copilotkit/channels` that renders natively per platform.
 5. **Context** — knowledge injected into the agent's prompt per run.
 
 ## Packages
@@ -92,8 +92,13 @@ const bot = createChannel({
   provider + workspace + platform user id — the right default. Or pass a
   callback `(ctx) => ApplicationUser | null` to map onto your own user table.
 - `agent` accepts a factory `(threadId) => agent` **or** a single agent. Prefer
-  the factory: turns default to `"parallel"` concurrency and sharing one agent
-  instance across concurrent turns corrupts its message state.
+  the factory — it is the shape that lets you bind per-thread config. Turn
+  concurrency defaults to `"parallel"`, but you do not have to hand-manage
+  isolation: Channels clones the agent per turn for *every* configured shape
+  (singleton, fresh factory, and a factory that returns the same object). What it
+  cannot do is fix a broken `clone()` — a custom `AbstractAgent` subclass with no
+  `clone()`, or one that drops subclass state, fails loudly at turn start
+  regardless of which shape you passed.
 
 Other useful options: `tools`, `context`, `components` (register JSX components
 so their handlers survive a restart), `store` (persistence, per-thread state
@@ -143,6 +148,7 @@ actually lined up, that is a setup workflow rather than an API question — see 
 connection.
 
 ```ts
+import { createServer } from "node:http";
 import { CopilotRuntime, CopilotKitIntelligence } from "@copilotkit/runtime/v2";
 import { createCopilotNodeListener } from "@copilotkit/runtime/v2/node";
 
@@ -154,9 +160,17 @@ const runtime = new CopilotRuntime({
   channels: [bot],
 });
 
-const listener = createCopilotNodeListener({ runtime });
+const listener = createCopilotNodeListener({ runtime, basePath: "/api/copilotkit" });
 const channels = listener.channels;
 if (!channels) throw new Error("Channels control surface was not created.");
+
+const server = createServer(listener);
+const shutdown = async () => {
+  await channels.stop();
+  if (server.listening) server.close();
+};
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
 
 await channels.ready({ timeoutMs: 30_000 });
 
@@ -169,11 +183,16 @@ if (status.overall !== "online") {
   throw new Error(`Channel is not online: ${JSON.stringify(status)}`);
 }
 
-process.once("SIGTERM", () => channels.stop());
+server.listen(Number(process.env.PORT ?? 3000));
 ```
 
-Needs Node.js 22+ and a long-running process or container. For an HTTP server,
-pass the listener to `createServer(listener)` and `server.listen(port)`.
+Needs Node.js 22+ and a long-running process or container. Managed delivery
+arrives over the Channel's own socket, not this HTTP port — but keep the server:
+it is how the runtime serves web requests, and most hosts require a listening
+port for their health check.
+
+The snippet uses top-level `await`, so the project must be ESM: set
+`"type": "module"` in `package.json` (`npm pkg set type=module`).
 
 ## Channel handlers
 
@@ -214,7 +233,7 @@ thread.update(ref, ui)          // replace a previously posted message
 thread.delete(ref)              // remove a message
 thread.stream(src)              // stream a string / AsyncIterable<string> live
 thread.postFile({ ... })        // upload a file
-thread.postEphemeral(user, ui)  // visible to one user (capability-gated)
+thread.postEphemeral(user, ui, { fallbackToDM }) // one user only; the opts arg is required
 thread.runAgent(input?)         // run the agent loop; input?: { prompt?, context?, tools? }
 thread.resume(value)            // re-enter after an interrupt → MessageRef | undefined
 thread.awaitChoice<T>(ui)       // post a picker and BLOCK until the user chooses
@@ -263,7 +282,7 @@ Register tools via `createChannel({ tools })`, or `bot.tool(t)` before start.
 
 ## Interactive UI — the channels-ui JSX vocabulary
 
-Import components from `@copilotkit/channels-ui` and pass a tree to `thread.post`,
+Import components from `@copilotkit/channels` and pass a tree to `thread.post`,
 `thread.update`, or `thread.awaitChoice`. The **same tree** renders as Block Kit
 on Slack, components on Discord, and Adaptive Cards on Teams. A surface that
 can't render a node skips it (the renderer is total) — so rich UI degrades
@@ -273,7 +292,7 @@ gracefully instead of erroring.
 import {
   Message, Header, Section, Markdown, Fields, Field,
   Actions, Button, Divider, Image,
-} from "@copilotkit/channels-ui";
+} from "@copilotkit/channels";
 
 await thread.post(
   <Message accent="#ff6600">
@@ -314,8 +333,13 @@ factory at Channels — this is not React:
 }
 ```
 
-Without `jsxImportSource` the tree compiles against React and fails. (Pointing it
-at `@copilotkit/channels-ui` also works if you installed that package directly.)
+Without `jsxImportSource` the tree compiles against React and fails.
+
+Point it at `@copilotkit/channels` — the package you installed. Do **not** point
+it at `@copilotkit/channels-ui` unless that package is a direct dependency: it is
+only a transitive dep of the umbrella package, so the import resolves under npm's
+hoisted layout and fails under pnpm's isolated one. The same rule applies to
+`import { Message } from "@copilotkit/channels-ui"`.
 
 ## Human-in-the-loop
 
@@ -353,13 +377,26 @@ grounds the turn. Pass them at `createChannel({ context })` or per-run via
 ## Slash commands
 
 ```ts
-bot.onCommand("top", async ({ thread }) => {
-  const stories = await fetchTopStories(5);
+bot.onCommand("top", async ({ thread, text }) => {
+  const stories = await fetchTopStories(Number(text) || 5);
   await thread.post(/* a <Message> listing them */);
 });
 ```
 
-For richer command metadata (description, argument hints registered with the
+Arguments arrive on `CommandContext` as **`text`** — the raw string after the
+command name — not `args`. `options` holds the parsed, typed form and is only
+populated by surfaces that deliver structured arguments natively (Discord); on
+text-only surfaces like Slack it is empty, so read `text` there. The context also
+carries `command`, `user`, `actor`, `platform`, and an optional `openModal`.
+
+Command args are never posted to the channel, so they are not in reconstructed
+history — pass them explicitly when handing off to the agent:
+
+```ts
+await thread.runAgent({ prompt: `Triage: ${text}` });
+```
+
+For richer command metadata (description, an `options` schema registered with the
 platform), use `defineChannelCommand` and pass it via `commands` — see the
 adapter's `registerCommands` capability.
 
@@ -383,12 +420,14 @@ task is specifically "add support for platform X".
 - Do **not** call `new Bot()` or `bot.on("message", …)` — use the named
   `onMention` / `onMessage` / `onCommand` handlers.
 - Do **not** hand-build Block Kit / embeds / Adaptive Cards JSON — render JSX
-  from `@copilotkit/channels-ui` and let the adapter translate it.
+  from `@copilotkit/channels` and let the adapter translate it.
 - Prefer a factory `agent: (threadId) => agent` over a shared agent instance.
 - Prefer `thread.runAgent()` over manually looping over agent events.
 - Do **not** write a handler as a concise arrow returning `thread.post(...)` —
   handlers must return `void | Promise<void>` and `post` returns a `MessageRef`,
   which fails under `strict`. Use a block body and `await` it:
   `async ({ thread }) => { await thread.post(…); }`.
+- Do **not** read slash-command arguments from `args` — there is no such field.
+  Use `text` (raw) or `options` (typed, structured surfaces only).
 - A file that contains JSX must be **`.tsx`** with
-  `jsxImportSource: "@copilotkit/channels-ui"` — otherwise it won't compile.
+  `jsxImportSource: "@copilotkit/channels"` — otherwise it won't compile.

@@ -25,7 +25,7 @@ Decode raw platform payloads into these before handing them to the sink.
 
 ### Egress — render the IR
 
-Given `BotNode[]` (the lowered JSX tree), render to the platform:
+Given `ChannelNode[]` (the lowered JSX tree), render to the platform:
 
 - `post(target, nodes)` → create a message, return a `MessageRef`.
 - `update(ref, nodes)` → edit an existing message.

@@ -1,8 +1,13 @@
 # channels-ui component reference
 
-All components import from `@copilotkit/channels-ui`. You describe a message as a
+All components import from `@copilotkit/channels` (the root import re-exports
+them; `@copilotkit/channels/ui` is the same surface). Only import from
+`@copilotkit/channels-ui` directly if you installed that package as a direct
+dependency — otherwise it resolves under npm and fails under pnpm.
+
+You describe a message as a
 JSX tree and pass it to `thread.post`, `thread.update`, or `thread.awaitChoice`.
-The engine lowers the tree to a platform-neutral IR (`BotNode[]`); each adapter
+The engine lowers the tree to a platform-neutral IR (`ChannelNode[]`); each adapter
 renders what its surface supports and **skips nodes it can't render** — the
 renderer is total, so a rich tree degrades gracefully instead of throwing.
 
@@ -70,8 +75,9 @@ of the component's name, path, and props. A button clicked long after it was
 posted still resolves to the right handler *as long as the binding still exists*.
 
 - Inline handlers route **in-process only** — they're lost on restart.
-- Handlers on a **registered component** with a durable `ActionStore` configured
-  survive a restart. See `hitl-patterns.md` for the store.
+- Handlers on a **registered component** (`createChannel({ components })`) with a
+  durable store configured (`createChannel({ store: { adapter } })`) survive a
+  restart. See `hitl-patterns.md` for the store.
 
 ## Choosing components
 
