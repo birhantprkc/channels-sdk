@@ -49,6 +49,22 @@ Choose a platform, join the experience, and see how an agent handles context, to
 
 Your agent and application logic run in your infrastructure. CopilotKit Intelligence manages the platform connection and delivers each turn to your long-running Channels process.
 
+### Fastest path for Slack: install the skill and let your coding agent drive
+
+Slack setup spans a Slack app, a workspace install, a managed Channel, and a local runtime. Install the `setup-slack-channel` skill and your coding agent walks all of it with you:
+
+```sh
+npx copilotkit skills install --skill setup-slack-channel
+```
+
+Or install every CopilotKit skill at once:
+
+```sh
+npx copilotkit skills install
+```
+
+Then ask your agent to set up Slack. The steps below are the same path, done by hand.
+
 ### 1. Configure the connection
 
 [Create a Channel in CopilotKit Intelligence](https://docs.copilotkit.ai/channels) and connect Slack. Keep the Channel **Code** and project-scoped Intelligence API key for the next steps.
@@ -235,6 +251,7 @@ Use it to study a complete application with:
 | I want to…                        | Start here                                                                                            |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Experience Channels without setup | [Try Channels](https://www.copilotkit.ai/try-channels)                                                |
+| Set up Slack with my coding agent | `npx copilotkit skills install --skill setup-slack-channel`                                           |
 | Build my first Channel            | [Channels documentation](https://docs.copilotkit.ai/channels)                                         |
 | Inspect the SDK implementation    | [Channels source in CopilotKit](https://github.com/CopilotKit/CopilotKit/tree/main/packages/channels) |
 | Install the package               | [`@copilotkit/channels` on npm](https://www.npmjs.com/package/@copilotkit/channels)                   |
