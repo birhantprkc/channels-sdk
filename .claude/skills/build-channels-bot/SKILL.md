@@ -8,7 +8,7 @@ description: >-
   whenever the user wants to
   create, scaffold, or extend a Channels SDK bot; wire an agent into Slack/
   Discord/Teams; add a tool, slash command, button, select, or human-in-the-loop
-  confirmation to a chat bot; or asks about createBot, defineBotTool,
+  confirmation to a chat bot; or asks about createChannel, defineChannelTool,
   thread.runAgent, awaitChoice, or the channels-ui JSX components. Trigger even
   when the user says "Slack bot", "Discord bot", or "chat agent" without naming
   the SDK, as long as the context is CopilotKit / Channels. The Channels API is
@@ -25,64 +25,176 @@ and can pause for human input mid-run.
 
 This API is recent and not reliably in model memory. **Do not guess the API from
 what a Slack/Discord SDK usually looks like** — the shapes below are the real
-ones. When in doubt, prefer the exact names here over anything remembered.
+ones, verified against `@copilotkit/channels@0.6.0`. When in doubt, prefer the
+exact names here over anything remembered.
+
+> **Naming:** the factory is `createChannel`, not `createBot`; tools are
+> `defineChannelTool`, not `defineBotTool`. An earlier generation of this SDK
+> used `Bot`-prefixed names and they do **not** exist in the shipped packages —
+> importing them fails to compile. "Bot" survives only as an informal word for
+> the thing you build (and as the conventional variable name).
 
 ## The mental model (five pieces)
 
-1. **Bot** — `createBot()` returns a `Bot`; you attach handlers to it.
+1. **Channel** — `createChannel()` returns a `Channel`; you attach handlers to it.
 2. **Thread** — the per-conversation handle passed to every handler; you render
    and drive the conversation through it.
-3. **Tools** — typed functions the agent can call (`defineBotTool`).
+3. **Tools** — typed functions the agent can call (`defineChannelTool`).
 4. **UI** — JSX from `@copilotkit/channels-ui` that renders natively per platform.
 5. **Context** — knowledge injected into the agent's prompt per run.
 
 ## Packages
 
-- `@copilotkit/channels` — the engine (`createBot`, `defineBotTool`, `defineBotCommand`, `ContextEntry`, `ActionStore`).
-- `@copilotkit/channels-ui` — the JSX vocabulary (`Message`, `Section`, `Button`, …).
-- `@copilotkit/channels-slack` — the Slack adapter (reference implementation). Each surface is its own adapter package following `@copilotkit/channels-<platform>`: `-teams`, `-discord`, `-telegram`, `-whatsapp`, `-google-chat`.
-- `@copilotkit/runtime` — the agent backend the bot drives (the AG-UI runtime). Optional — any AG-UI-compatible agent (LangGraph, CrewAI, custom) works via the `agent` factory.
+`@copilotkit/channels` is **batteries-included**: one install gives you the
+engine, the JSX vocabulary, the UI primitives, the testing API, and every
+adapter. Prefer it over the split packages.
 
-Install: `pnpm add @copilotkit/channels @copilotkit/channels-ui @copilotkit/channels-slack`
-
-**Reference app:** [OpenTag](https://github.com/CopilotKit/OpenTag) is a complete, real bot built on this SDK (the open-source alternative to Claude in Slack). When a task is close to "a full Slack agent app", it's the best end-to-end example to mirror — it wires `@copilotkit/runtime` as the agent backend and the Channels SDK as the chat surface.
-
-## createBot — the entry point
-
-```ts
-import { createBot, defineBotTool } from "@copilotkit/channels";
-import { slack } from "@copilotkit/channels-slack";
-
-const bot = createBot({
-  adapters: [
-    slack({
-      botToken: process.env.SLACK_BOT_TOKEN!,
-      appToken: process.env.SLACK_APP_TOKEN!,
-    }),
-  ],
-  agent: (threadId) => makeAgent(threadId), // factory: one agent per thread
-  tools: [/* defineBotTool(...) */],
-  context: [/* { description, value } */],
-});
-
-await bot.start(); // bot.stop() to tear down
+```sh
+pnpm add @copilotkit/channels @copilotkit/runtime
 ```
 
-`adapters` is an array — the same bot can run on several platforms at once.
-`agent` is a **factory** taking a `threadId` and returning the agent to drive.
+- `@copilotkit/channels` — `createChannel`, `defineChannelTool`,
+  `defineChannelCommand`, `ContextEntry`, **and** the UI components
+  (`Message`, `Section`, `Button`, …) all from the root import.
+  Adapters live on subpaths: `@copilotkit/channels/slack`, `/teams`,
+  `/discord`, `/telegram`, `/whatsapp`. UI is also at `/ui`.
+- `@copilotkit/runtime` — **required to start a Channel.** The runtime owns the
+  Channel lifecycle (see below). Your *agent* can still be anything AG-UI
+  compatible (LangGraph, CrewAI, custom) via the `agent` factory.
 
-## Bot handlers
+Channels and Runtime ship as a tested pair — upgrade them together. Standalone
+`@copilotkit/channels-ui` / `-slack` / `-teams` / … packages also exist and work,
+but the single dependency is the documented path.
 
-Attach these to the returned `bot`. Register them before `start()`.
+**A CopilotKit Intelligence API key is required** (free tier available). There is
+no standalone/DIY way to run a Channel — the runtime starts each Channel only
+once Intelligence is configured.
+
+**Reference app:** [OpenTag](https://github.com/CopilotKit/OpenTag) is a complete, real bot built on this SDK (the open-source alternative to Claude in Slack). When a task is close to "a full Slack agent app", it's the best end-to-end example to mirror.
+
+## createChannel — the entry point
+
+**Default to a managed Channel.** Intelligence holds the platform credentials,
+so your process carries no Slack or Teams tokens and you add platforms in the
+dashboard rather than in code. There is no adapter at all:
+
+```ts
+import { createChannel } from "@copilotkit/channels";
+
+const bot = createChannel({
+  name: process.env.CHANNEL_CODE!, // must match the Channel code in Intelligence
+  identifyUser: "platform",        // REQUIRED — see below
+  agent: (threadId) => makeAgent(threadId), // factory: one agent per thread
+});
+```
+
+- **`identifyUser` is required.** `"platform"` derives the canonical user from
+  provider + workspace + platform user id — the right default. Or pass a
+  callback `(ctx) => ApplicationUser | null` to map onto your own user table.
+- `agent` accepts a factory `(threadId) => agent` **or** a single agent. Prefer
+  the factory: turns default to `"parallel"` concurrency and sharing one agent
+  instance across concurrent turns corrupts its message state.
+
+Other useful options: `tools`, `context`, `components` (register JSX components
+so their handlers survive a restart), `store` (persistence, per-thread state
+schema, transcripts, `concurrency`), `commands` (`defineChannelCommand` specs),
+`showToolStatus`, `sanitizeAgentEvents`.
+
+### Direct adapter — only when you own the platform connection
+
+Pass `adapters` when *you* hold the platform tokens. This is the secondary path:
+it means platform secrets in your app and per-platform wiring in code. It does
+**not** avoid needing Intelligence — the runtime still owns the lifecycle.
+
+Do not reach for this because a managed Channel is reporting `setup_required` or
+because the dashboard is unfamiliar — swapping to a direct adapter to "make it
+work" is a known failure mode, not a fallback. Fix the managed setup instead.
+
+```ts
+import { slack, defaultSlackTools, defaultSlackContext } from "@copilotkit/channels/slack";
+
+const bot = createChannel({
+  name: "support-bot",
+  identifyUser: "platform",
+  adapters: [
+    slack({
+      botToken: process.env.SLACK_BOT_TOKEN!, // xoxb-…
+      appToken: process.env.SLACK_APP_TOKEN!, // xapp-… (Socket Mode)
+    }),
+  ],
+  agent: (threadId) => makeAgent(threadId),
+  tools: [...defaultSlackTools /* , ...yourTools */],
+  context: [...defaultSlackContext /* , ...yourContext */],
+});
+```
+
+`adapters` is an array — one bot can run several platforms at once.
+`defaultSlackTools` / `defaultSlackContext` add `lookup_slack_user` plus
+tagging/mrkdwn/threading guidance; include them for direct Slack.
+
+For getting the Slack app, tokens, Intelligence Channel, and a local agent
+actually lined up, that is a setup workflow rather than an API question — see the
+`setup-slack-channel` skill if it is available in the repo.
+
+## Starting it — the runtime owns the lifecycle
+
+**There is no `bot.start()`.** A Channel is runtime-driven: attach it to a
+`CopilotRuntime` and create a listener. Creating the listener starts the
+connection.
+
+```ts
+import { CopilotRuntime, CopilotKitIntelligence } from "@copilotkit/runtime/v2";
+import { createCopilotNodeListener } from "@copilotkit/runtime/v2/node";
+
+const runtime = new CopilotRuntime({
+  agents: {}, // required, even when the Channel supplies the agent
+  intelligence: new CopilotKitIntelligence({
+    apiKey: process.env.COPILOTKIT_INTELLIGENCE_API_KEY!,
+  }),
+  channels: [bot],
+});
+
+const listener = createCopilotNodeListener({ runtime });
+const channels = listener.channels;
+if (!channels) throw new Error("Channels control surface was not created.");
+
+await channels.ready({ timeoutMs: 30_000 });
+
+// `ready()` is NOT proof the Channel is connected — it also resolves on
+// `setup_required`, a declared-but-unprovisioned Channel (a "valid degraded
+// state"). Check the status or you get a process that starts cleanly, serves
+// HTTP 200, and answers nothing in Slack.
+const status = channels.status();
+if (status.overall !== "online") {
+  throw new Error(`Channel is not online: ${JSON.stringify(status)}`);
+}
+
+process.once("SIGTERM", () => channels.stop());
+```
+
+Needs Node.js 22+ and a long-running process or container. For an HTTP server,
+pass the listener to `createServer(listener)` and `server.listen(port)`.
+
+## Channel handlers
+
+Attach these to the object `createChannel` returned, before the runtime starts it.
 
 | Handler | Fires when | Handler gets |
 | --- | --- | --- |
-| `bot.onMention(fn)` | the bot is @-mentioned (takes priority over `onMessage`) | `{ thread, message, user? }` |
-| `bot.onMessage(fn)` | any message the bot sees | `{ thread, message, user? }` |
-| `bot.onThreadStarted(fn)` | a conversation surface opens | `{ thread, user? }` |
-| `bot.onCommand(name, fn)` | a slash command runs | `{ thread, args?, user? }` |
-| `bot.onInteraction<T>(id, fn)` | a bound action fires (explicit binding) | interaction ctx |
-| `bot.onInterrupt<T>(event, fn)` | the agent pauses mid-run | interrupt payload |
+| `bot.onMention(fn)` | the bot is @-mentioned (takes priority over `onMessage`) | `{ thread, message }` |
+| `bot.onMessage(fn)` | any message the bot sees | `{ thread, message }` |
+| `bot.onThreadStarted(fn)` | a conversation surface opens (e.g. Slack assistant pane) | `{ thread, user, actor }` |
+| `bot.onWelcome(fn)` | the app is installed / a conversation is activated | `{ thread, user, actor, platform }` |
+| `bot.onCommand(name, fn)` | a slash command runs | `CommandContext` |
+| `bot.onInteraction<T>(id, fn)` | a bound action fires (explicit binding) | `InteractionContext<T>` |
+| `bot.onInterrupt<T>(event, fn)` | the agent pauses mid-run | `{ payload, thread, user, actor }` |
+| `bot.onReaction([emoji,] fn)` | an emoji reaction is added/removed | `ReactionEvent` |
+| `bot.onModalSubmit(id, fn)` | a modal is submitted (return `{ errors }` to keep it open) | `ModalSubmitEvent` |
+| `bot.onModalClose(id, fn)` | a modal is dismissed | `ModalCloseEvent` |
+
+Note `onMention`/`onMessage` get `{ thread, message }` only — no `user`. Reach
+the caller via the message, or use `identifyUser` plus a handler that exposes
+`user` (`onThreadStarted`, `onWelcome`, tool context).
 
 The most common shape is: reply on mention by running the agent.
 
@@ -101,12 +213,17 @@ thread.post(ui)                 // render a JSX message → returns a MessageRef
 thread.update(ref, ui)          // replace a previously posted message
 thread.delete(ref)              // remove a message
 thread.stream(src)              // stream a string / AsyncIterable<string> live
-thread.runAgent(input?)         // run the agent loop; input?: { context?, tools? }
-thread.resume(value)            // re-enter after an interrupt with a value
+thread.postFile({ ... })        // upload a file
+thread.postEphemeral(user, ui)  // visible to one user (capability-gated)
+thread.runAgent(input?)         // run the agent loop; input?: { prompt?, context?, tools? }
+thread.resume(value)            // re-enter after an interrupt → MessageRef | undefined
 thread.awaitChoice<T>(ui)       // post a picker and BLOCK until the user chooses
 thread.getMessages()            // read the conversation (capability-gated)
 thread.setTitle(title)          // rename the surface
 thread.setSuggestedPrompts(...) // suggest follow-ups
+thread.react(ref, emoji)        // add / remove a reaction (also unreact)
+thread.state<T>() / setState(v) // per-thread state (typed by store.state schema)
+thread.lookupUser(query)        // resolve a platform user (capability-gated)
 ```
 
 `runAgent` drives the agent's run / tool-call / interrupt loop and renders each
@@ -120,20 +237,29 @@ The handler receives the parsed args and a context object with the **live
 thread** — so a tool can post UI, ask a question, or run a HITL flow mid-execution.
 
 ```ts
-import { defineBotTool } from "@copilotkit/channels";
+import { defineChannelTool } from "@copilotkit/channels";
 import { z } from "zod";
 
-const getSchedule = defineBotTool({
+const getSchedule = defineChannelTool({
   name: "get_oncall",
   description: "Look up who is currently on call for a team.",
   parameters: z.object({ team: z.string() }),
-  async handler({ team }, { thread, user, signal, platform }) {
+  async handler({ team }, { thread, user, actor, signal, platform }) {
     return await fetchOncall(team); // returned value goes back to the agent
   },
 });
 ```
 
-`BotToolContext` = `{ thread, message?, user?, signal?, platform }`.
+`ChannelToolContext` = `{ thread, message?, user, actor, signal?, platform }`,
+where `user` is `ApplicationUser | null`.
+
+The return value is what the **agent** reads back, not the user. Return the raw
+data (it's JSON-stringified for you — don't hand-stringify, don't return
+`{ ok: true }`). For a tool that posts a card, return a short natural-language
+confirmation like `"Displayed the issue card."` so the model doesn't restate it.
+On failure, return the actual error text so the model can repair and retry.
+
+Register tools via `createChannel({ tools })`, or `bot.tool(t)` before start.
 
 ## Interactive UI — the channels-ui JSX vocabulary
 
@@ -172,6 +298,25 @@ component list and their props (`Select`, `Input`, `Table`, `Chart`, etc.) and
 the cross-platform degradation rules. **Read it before using a component you
 haven't used here** — do not invent tag names or props.
 
+### JSX setup (required, easy to miss)
+
+A file containing JSX must be **`.tsx`** and the tsconfig must point the JSX
+factory at Channels — this is not React:
+
+```json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@copilotkit/channels",
+    "module": "nodenext",
+    "moduleResolution": "nodenext"
+  }
+}
+```
+
+Without `jsxImportSource` the tree compiles against React and fails. (Pointing it
+at `@copilotkit/channels-ui` also works if you installed that package directly.)
+
 ## Human-in-the-loop
 
 Two patterns. Use `awaitChoice` for a simple picker; use `onInterrupt` +
@@ -179,42 +324,44 @@ Two patterns. Use `awaitChoice` for a simple picker; use `onInterrupt` +
 
 ```tsx
 const ok = await thread.awaitChoice<boolean>(
-  <Section>
-    Deploy to <b>production</b>?
+  <Message accent="#E01E5A">
+    <Section><Markdown>Deploy to **production**? This is irreversible.</Markdown></Section>
     <Actions>
       <Button value={true} style="primary">Ship it</Button>
       <Button value={false} style="danger">Cancel</Button>
     </Actions>
-  </Section>,
+  </Message>,
 );
-if (!ok) return "Cancelled.";
+if (!ok) return "User cancelled; nothing was deployed.";
 ```
 
 `awaitChoice<T>` blocks the handler until the user clicks; the clicked
-`Button`'s `value` (typed as `T`) is what it resolves to. See
+`Button`'s `value` (typed as `T`) is what it resolves to. Because a tool handler
+gets the live `thread`, call it directly inside a `defineChannelTool` handler to
+gate a destructive tool on approval. See
 [references/hitl-patterns.md](references/hitl-patterns.md) for `onInterrupt` /
 `resume`, and for why action handlers survive restarts (content-stable IDs +
-`ActionStore`).
+a durable store).
 
 ## Context
 
 `ContextEntry` values are `{ description: string; value: string }` pairs injected
 into the agent's prompt per run — the channel, the caller's role, anything that
-grounds the turn. Pass them at `createBot({ context })` or per-run via
+grounds the turn. Pass them at `createChannel({ context })` or per-run via
 `thread.runAgent({ context })`.
 
 ## Slash commands
 
 ```ts
-bot.onCommand("top", async ({ thread, args }) => {
+bot.onCommand("top", async ({ thread }) => {
   const stories = await fetchTopStories(5);
   await thread.post(/* a <Message> listing them */);
 });
 ```
 
 For richer command metadata (description, argument hints registered with the
-platform), use `defineBotCommand` and pass it via `commands` — see the adapter's
-`registerCommands` capability.
+platform), use `defineChannelCommand` and pass it via `commands` — see the
+adapter's `registerCommands` capability.
 
 ## Adding a new platform
 
@@ -225,13 +372,23 @@ task is specifically "add support for platform X".
 
 ## Common mistakes to avoid
 
-- Do **not** call `new Bot()` or `bot.on("message", …)` — use `createBot(...)`
-  and the named `onMention` / `onMessage` / `onCommand` handlers.
+- Do **not** use `createBot`, `defineBotTool`, `defineBotCommand`, or
+  `BotToolContext` — they do not exist. Use `createChannel`,
+  `defineChannelTool`, `defineChannelCommand`, `ChannelToolContext`.
+- Do **not** call `bot.start()` / `bot.stop()` — there is no public lifecycle
+  method. Attach the Channel to `CopilotRuntime` and create a listener.
+- Do **not** omit `identifyUser` — it is a required option.
+- Do **not** pass `provider: "slack"` to `createChannel` — no such option. The
+  platform comes from the adapter, or from Intelligence for a managed Channel.
+- Do **not** call `new Bot()` or `bot.on("message", …)` — use the named
+  `onMention` / `onMessage` / `onCommand` handlers.
 - Do **not** hand-build Block Kit / embeds / Adaptive Cards JSON — render JSX
   from `@copilotkit/channels-ui` and let the adapter translate it.
-- Do **not** invent a tool-registration API — tools are `defineBotTool(...)`
-  passed to `createBot({ tools })` (or `bot.tool(t)` before `start()`).
-- `agent` is a **factory** `(threadId) => agent`, not an agent instance.
+- Prefer a factory `agent: (threadId) => agent` over a shared agent instance.
 - Prefer `thread.runAgent()` over manually looping over agent events.
-- A file that contains JSX (`<Section>…`, `<Button>…`) must use the **`.tsx`**
-  extension and a JSX-enabled tsconfig, not `.ts` — otherwise it won't compile.
+- Do **not** write a handler as a concise arrow returning `thread.post(...)` —
+  handlers must return `void | Promise<void>` and `post` returns a `MessageRef`,
+  which fails under `strict`. Use a block body and `await` it:
+  `async ({ thread }) => { await thread.post(…); }`.
+- A file that contains JSX must be **`.tsx`** with
+  `jsxImportSource: "@copilotkit/channels-ui"` — otherwise it won't compile.

@@ -5,21 +5,21 @@
       "id": 0,
       "name": "slack-oncall",
       "prompt": "I'm building a Slack bot for my team using the CopilotKit Channels SDK (@copilotkit/channels). When someone @mentions it, it should answer using our agent. It also needs a tool that looks up who is currently on call for a given team name. Write the complete bot setup code in TypeScript and save it as bot.ts.",
-      "expected_output": "A bot.ts using createBot with a slack adapter, agent factory, defineBotTool for on-call lookup with a Standard Schema, and bot.onMention that calls thread.runAgent(). No invented APIs.",
+      "expected_output": "A bot.ts using createChannel (NOT createBot) with a required identifyUser, a slack({ botToken, appToken }) adapter, an agent factory (threadId) => agent, and defineChannelTool (NOT defineBotTool) for the on-call lookup with a Standard Schema. bot.onMention calls thread.runAgent(). Because there is no bot.start(), startup must go through CopilotRuntime({ agents: {}, intelligence, channels: [bot] }) + createCopilotNodeListener + listener.channels.ready(). No invented APIs.",
       "files": []
     },
     {
       "id": 1,
       "name": "hitl-confirm",
-      "prompt": "Using the CopilotKit Channels SDK, I want a confirmation with Approve and Cancel buttons before my bot runs a destructive tool that deletes a database. Show me the code for the tool that renders the human-in-the-loop confirmation and only proceeds if the user approves. Save it as delete-tool.ts.",
-      "expected_output": "A defineBotTool whose handler calls thread.awaitChoice with an Actions/Button tree (values true/false) and only deletes on approval. Uses channels-ui components.",
+      "prompt": "Using the CopilotKit Channels SDK, I want a confirmation with Approve and Cancel buttons before my bot runs a destructive tool that deletes a database. Show me the code for the tool that renders the human-in-the-loop confirmation and only proceeds if the user approves. Save it as delete-tool.tsx.",
+      "expected_output": "A defineChannelTool (NOT defineBotTool) whose handler calls thread.awaitChoice<boolean> with an Actions/Button tree (values true/false, style primary/danger) and only deletes on approval. Uses real channels-ui components. File is .tsx because it contains JSX; should mention or assume jsxImportSource: \"@copilotkit/channels-ui\".",
       "files": []
     },
     {
       "id": 2,
       "name": "hn-top",
-      "prompt": "Build a CopilotKit Channels SDK slash command called /top that posts the top 5 Hacker News stories as one interactive message. Each story should show its title and points, with a button that opens the story link. Include the Hacker News fetch. Save it as top-command.ts.",
-      "expected_output": "bot.onCommand('top', ...) (or defineBotCommand) that fetches HN top stories and posts a Message with per-story Section/Fields and a link Button (url=...). Uses channels-ui JSX.",
+      "prompt": "Build a CopilotKit Channels SDK slash command called /top that posts the top 5 Hacker News stories as one interactive message. Each story should show its title and points, with a button that opens the story link. Include the Hacker News fetch. Save it as top-command.tsx.",
+      "expected_output": "bot.onCommand('top', ...) (or defineChannelCommand, NOT defineBotCommand) that fetches HN top stories and posts a Message with per-story Section/Fields and a link Button (url=...). Uses channels-ui JSX in a .tsx file.",
       "files": []
     }
   ]

@@ -70,7 +70,7 @@ decoding, socket-mode ingress).
 ## Testing an adapter
 
 Because the engine is platform-agnostic, you can exercise a new adapter with the
-same bot you'd run on Slack: swap the adapter in `createBot({ adapters: [...] })`
+same bot you'd run on Slack: swap the adapter in `createChannel({ adapters: [...] })`
 and confirm each IR node type renders (or degrades) correctly, that interactions
 round-trip back to their handlers, and that the content-stable IDs survive the
 decode path.
