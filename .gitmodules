@@ -1,0 +1,4 @@
+[submodule "examples/OpenTag"]
+	path = examples/OpenTag
+	url = https://github.com/CopilotKit/OpenTag.git
+	branch = main
