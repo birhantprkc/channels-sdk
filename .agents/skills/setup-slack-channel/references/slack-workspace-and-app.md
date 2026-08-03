@@ -27,25 +27,45 @@ people. That is the whole reason installs are gated.
 - **Changing scopes later forces re-approval and re-installation.** Get the
   manifest right the first time rather than adding scopes incrementally — this is
   also why you should not add scopes to someone else's app for your convenience.
+- **Bot display names and slash-command names are workspace-wide.** Slack blocks
+  an install whose bot name or command name is already taken in that workspace.
+  The wizard warns about this; resolve it by choosing a more specific Channel
+  display name, not by renaming commands the Channel implements.
 
 So: create the app immediately, and start the install request in parallel if one
 is needed. Do not sit idle waiting for approval before creating.
 
-## Create the app from a manifest
+## Create the app from the Channel wizard's manifest
 
-Which manifest:
+**There is exactly one correct manifest: the one the Intelligence Channel wizard
+generates** (Phase 1, the Setup step — "Copy manifest" / "View manifest YAML"). It
+is already pointed at the Channel's Request URL. Copy it from there.
 
-- **`assets/slack-app-manifest.yaml`** (this skill) — a neutral dev app. Use it
-  by default.
-- **The starter's own `slack-app-manifest.yaml`** — use it if the Channel
-  implements slash commands, because the manifest is where commands are declared.
-  `examples/OpenTag` declares `/agent`, `/triage`, `/preview`, `/file-issue`; a
-  command the manifest does not declare cannot be invoked, and a command the
-  manifest declares but the Channel does not implement fails in front of the user.
+Do **not** use either of these:
+
+- **The starter's own `slack-app-manifest.yaml`.** It sets
+  `socket_mode_enabled: true` and declares no `request_url` — the *direct-adapter*
+  shape. An app created from it installs cleanly and never delivers an event to
+  Intelligence.
+- **`assets/slack-app-manifest.yaml`** in this skill. Same problem; it is retained
+  only as a reference for what the direct-adapter shape looks like.
+
+The generated manifest deliberately contains **no `slash_commands`** and sets
+`interactivity.is_enabled: false`, because the managed adapter does not deliver
+those payloads. Do not add them back, and do not invent a Request URL for them.
 
 Then, in a browser at `api.slack.com/apps`: create a new app **from an app
 manifest**, choose the workspace, paste the manifest, review the requested
 scopes, and create it.
+
+Two paste-time gotchas:
+
+- Slack's manifest editor **lints empty strings** and refuses to advance with a
+  generic "We can't translate a manifest with errors" that names no field. A
+  `usage_hint: ""` is the usual culprit (the OpenTag manifest ships two). Delete
+  the empty keys rather than blanking them.
+- The editor auto-closes brackets as you type. Paste **minified, single-line**
+  JSON to avoid mangling, and confirm it parses before advancing.
 
 Before creating, change `display_information.name` and
 `features.bot_user.display_name` so the bot is obviously a dev app in the member
@@ -56,27 +76,35 @@ whoever finds it later.
 can reinstall it and rotate its tokens, breaking every consumer holding the old
 ones. Configuring a *new* app is the only safe path.
 
-## Install it and collect the two tokens
+## Install it and collect the two credentials
 
-1. **Install to the workspace** and complete the OAuth consent. This yields the
-   **bot token**, `xoxb-…`, on the app's OAuth page.
-2. **Generate an app-level token** on the app's Basic Information page, with the
-   **`connections:write`** scope. This yields `xapp-…`.
+1. **Install to the workspace** and complete the OAuth consent.
+2. Copy the **bot token** — OAuth & Permissions → Bot User OAuth Token (`xoxb-…`).
+3. Copy the **signing secret** — Basic Information → App Credentials → Signing
+   Secret.
 
-Both tokens go into the Slack adapter form in Intelligence, entered by the
-developer. Neither belongs in this repo, in `.env`, or in the conversation — see
+Both go into the Slack adapter form in Intelligence, entered by the developer.
+Neither belongs in this repo, in `.env`, or in the conversation — see
 `references/secrets-and-credentials.md`.
 
-They must come from the **same app**. A valid-but-mismatched `xoxb`/`xapp` pair
-cannot be detected during setup: it looks configured and never delivers.
+They must come from the **same app**. A mismatched pair cannot be detected during
+setup: it looks configured and never delivers.
+
+**Do not open the Install App page to read the token** — it renders it in plain
+text. Use OAuth & Permissions, and have the developer copy it themselves.
+
+If you changed the manifest after the first install, Slack shows a banner asking
+you to **reinstall**. That is required for the new scopes to take effect, and it
+issues a **new bot token** — so reinstall *before* copying the token, never after.
 
 ## Settings that must stay as the manifest sets them
 
-| Setting | Why |
-| --- | --- |
-| **Socket Mode enabled** | Managed delivery consumes events over Socket Mode using the `xapp-` token. This is why no public URL or tunnel is needed. |
-| **Interactivity enabled** | Off means button and select clicks are never delivered, even while text replies work — a confusing partial failure. |
-| **Event subscriptions** | `app_mention` for channel mentions, `message.im` for DMs. Editing the app after install can drop these. |
+| Setting | Expected | Why |
+| --- | --- | --- |
+| **Socket Mode** | **disabled** | Managed delivery is HTTPS to Intelligence's Request URL. Socket Mode is the direct-adapter path; enabling it here delivers nothing. |
+| **Event subscriptions → Request URL** | `https://intelligence.copilotkit.ai/api/channels/adapters/slack/events` | This is the whole delivery mechanism. Absent or wrong = permanent silence. |
+| **Event subscriptions → bot events** | includes `app_mention`, `message.im` | `app_mention` for channel mentions, `message.im` for DMs. Editing the app after install can drop these. |
+| **Interactivity** | disabled | The managed adapter does not deliver interactive payloads. Enabling it does not make buttons work, it just implies they should. |
 
 ## Invite the bot to a test channel
 
@@ -92,11 +120,13 @@ Prefer a channel the developer created for this. A DM to the bot also works for
 testing, but check which handlers the app registers first: an app with only
 `onMention` ignores plain DMs (see `references/troubleshooting.md`).
 
-## Phase 1 is done when
+## Phase 2 is done when
 
-- The app exists and is **installed** in the chosen workspace.
-- An `xoxb-` token and an `xapp-` token (with `connections:write`) from **that**
-  app are in the developer's hands, and neither has touched the repo or the chat.
+- The app exists and is **installed** in the chosen workspace, created from the
+  **wizard's** manifest.
+- Socket Mode is **off** and the events Request URL points at Intelligence.
+- An `xoxb-` bot token and the **signing secret** from **that** app are in the
+  developer's hands, and neither has touched the repo or the chat.
 - The bot appears in the member list of the test channel.
 
 ## What not to do

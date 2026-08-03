@@ -2,7 +2,14 @@
 
 Two processes for the `examples/OpenTag` starter: a **Python AG-UI agent** and a
 **Node runtime** that hosts the Channel. The runtime dials **out** to Intelligence
-over a websocket — nothing inbound, so no tunnel and no public URL.
+over a websocket — nothing inbound to your machine, so no tunnel and no public URL
+of your own.
+
+Be precise about why: the *runtime↔Intelligence* leg is an outbound websocket, and
+the *Slack↔Intelligence* leg is Slack posting HTTPS to Intelligence's own public
+Request URL. Neither leg needs a tunnel, and neither leg uses Socket Mode. The
+runtime's HTTP port (below) exists for health/serving, not for receiving Slack
+events — nothing from Slack ever hits it.
 
 ## Prerequisites
 
@@ -99,9 +106,24 @@ Channel with no Slack connection produces a clean, cheerful startup:
 await controls.ready({ timeoutMs: 30_000 });
 const status = controls.status();
 if (status.overall !== "online") {
-  throw new Error(`Channel is not online: ${JSON.stringify(status)}`);
+  const detail = Object.entries(status.channels)
+    .map(([name, state]) => `"${name}": ${state}`)
+    .join(", ");
+  throw new Error(
+    `Channels are not online (overall: ${status.overall}; ${detail}). ` +
+      `"setup_required" means the Channel exists in code but has no managed ` +
+      `provider attached in Intelligence — confirm the Code matches ` +
+      `INTELLIGENCE_CHANNEL_NAME exactly and that its Slack adapter is connected.`,
+  );
 }
 ```
+
+Put it **after `ready()` and before `listen()`**, so a dead Channel never gets as
+far as printing a listening line. In OpenTag's `server.ts` that is inside the
+existing `try`, which means the established cleanup path (`controls.stop()`, close
+server, close browser) already handles it. Worth a test with a fake control whose
+`status()` returns `setup_required`, asserting startup rejects and never listens —
+otherwise the gate itself is untested.
 
 This converts the entire class of "started fine, answers nothing" into a startup
 crash that names the state. There is no HTTP endpoint that reports Channel status
@@ -117,17 +139,36 @@ on SIGINT and SIGTERM.
 
 ## Ports
 
-| Port | Process |
-| --- | --- |
-| 8123 | OpenTag's Python AG-UI agent |
-| 3000 | Node runtime HTTP |
+| Port | Process | Override |
+| --- | --- | --- |
+| 8123 | OpenTag's Python AG-UI agent | `SERVER_PORT` |
+| 3000 | Node runtime HTTP | `PORT` |
 
 Before starting, make sure nothing already holds them — a stale process from an
 earlier attempt is a common cause of confusing behavior:
 
 ```bash
 lsof -nP -iTCP:3000 -iTCP:8123 -sTCP:LISTEN
+# and, to see which checkout owns a pid:
+lsof -a -p <pid> -d cwd -Fn
 ```
 
 Report what you find. Do not kill a process you did not start without asking,
 especially one that may belong to another session.
+
+**A second OpenTag checkout already running is the most likely cause**, and it is
+a normal thing for a developer to have. You do not need to stop it — run yours
+alongside on different ports instead. Note the agent reads `SERVER_PORT`, not
+`PORT`, precisely so it does not consume the Channel runtime's port:
+
+```bash
+PORT=3100 SERVER_PORT=8223 AGENT_URL=http://localhost:8223/ LOG_LEVEL=debug pnpm dev
+```
+
+Inline vars win over `.env`, because `dotenv` does not overwrite variables already
+present in the environment — so this needs no file edit. `AGENT_URL` must be moved
+in step with `SERVER_PORT`, or the runtime dials a port with nothing on it.
+
+Two runtimes declaring the **same Code in the same project** race for deliveries
+and the loser gets nothing, silently — but two runtimes on *different* Channels
+(or different environments) are fine, and only the ports collide.

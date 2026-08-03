@@ -1,19 +1,37 @@
-# Dedicated demo Slack app for a local CopilotKit Channels agent.
+# ⚠️  REFERENCE ONLY — DO NOT USE THIS FOR A MANAGED CHANNEL.
+#
+# This is the DIRECT-ADAPTER shape: it enables Socket Mode and declares no
+# event_subscriptions.request_url. A managed Intelligence Channel needs the
+# opposite (socket_mode_enabled: false + a request_url pointing at
+# https://intelligence.copilotkit.ai/api/channels/adapters/slack/events).
+#
+# An app created from this manifest installs cleanly, shows green in Slack, and
+# delivers NOTHING to Intelligence — the exact silent failure this skill exists
+# to prevent.
+#
+# For the managed workflow, copy the manifest that the Intelligence "Create a
+# channel" wizard generates (Setup step → "Copy manifest"). It is already
+# pointed at the right Request URL. See SKILL.md Phases 1–2.
+#
+# Kept here only so the two shapes can be compared when diagnosing an app that
+# was built the wrong way.
 #
 # Derived from examples/OpenTag/slack-app-manifest.yaml, with OpenTag's
 # app-specific slash commands and its E2E-only user token scope removed.
 #
-# Create a NEW app from this manifest (https://api.slack.com/apps → Create New
-# App → From an app manifest). Never paste this over an app that is already
-# installed and in use — that reinstalls it and rotates its tokens.
+# Never paste any manifest over an app that is already installed and in use —
+# that reinstalls it and rotates its tokens.
 #
 # Change `name` / `display_name` before creating the app so the bot is
 # obviously a dev app in the workspace member list.
 #
-# Socket Mode is required: managed delivery through CopilotKit Intelligence
-# consumes events over a Socket Mode connection using the app-level (xapp-)
-# token, so your laptop needs no public URL. Interactivity must stay enabled or
-# button and select clicks are never delivered.
+# Socket Mode below is what makes this the DIRECT-adapter shape: the app holds
+# its own platform credentials and a consumer connects to Slack over a Socket
+# Mode connection with an app-level (xapp-) token. A managed Intelligence
+# Channel works the other way round — Slack posts events over HTTPS to
+# Intelligence's Request URL, verified by the signing secret, and no app-level
+# token exists. Interactivity is enabled here for the same direct-adapter
+# reason; the managed path does not deliver interactive payloads at all.
 display_information:
   name: Channels Demo (Dev)
   description: Local CopilotKit Channels agent — development app.

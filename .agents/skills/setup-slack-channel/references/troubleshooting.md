@@ -87,15 +87,33 @@ Check in this order; each is cheap and each fully explains "nothing happens".
    `message.im` without channel membership. *DM works, channel doesn't* is a
    near-certain membership problem — **but read the handler-routing section
    below first**, because for some apps the reverse is expected.
-3. **Did the `xoxb-` and `xapp-` tokens come from the same Slack app?** A
-   valid-but-mismatched pair cannot be detected during setup. It looks
-   configured and never delivers.
-4. **Is Socket Mode still enabled, and interactivity still on?** Managed
-   delivery consumes events over Socket Mode using the app-level token.
-   Interactivity off means buttons and selects are never delivered even when
-   text replies work.
+3. **Is the events Request URL set, and is Socket Mode off?** This is the single
+   most common cause of total silence on a managed Channel, and it is invisible
+   from the runtime side. Open the app's **App Manifest** page and confirm:
+
+   ```yaml
+   settings:
+     event_subscriptions:
+       request_url: "https://intelligence.copilotkit.ai/api/channels/adapters/slack/events"
+     socket_mode_enabled: false
+   ```
+
+   If `socket_mode_enabled: true` and there is no `request_url`, the app was
+   created from a direct-adapter manifest (the starter's own, most likely). Slack
+   is delivering to a Socket Mode connection nobody is holding. Fix by pasting the
+   Channel wizard's manifest over it, saving, and **reinstalling** — then re-enter
+   the new bot token in the adapter, because reinstalling rotates it.
+4. **Did the bot token and signing secret come from the same Slack app?** A
+   mismatched pair cannot be detected during setup. It looks configured and never
+   delivers. (There is no `xapp-` token to check — managed delivery does not use
+   one.)
 5. **Are the event subscriptions present?** `app_mention` for channel mentions,
    `message.im` for DMs. Editing the manifest after install can drop them.
+6. **Was a slash command or a button involved?** Those are not delivered on the
+   managed path at all — the generated manifest declares no `slash_commands` and
+   disables interactivity. `onCommand` / `onModalSubmit` / component handlers will
+   never fire. This is a capability limit, not a misconfiguration; do not "fix" it
+   by inventing a Request URL.
 
 ## Handler routing — the silent no-op that looks like a Slack failure
 
@@ -206,6 +224,27 @@ of dashboard clicking:
    pointed at the managed host, and a wrong ws URL does not raise — it hangs in
    `connecting`. For this skill's scope, leave both unset so they default to
    production.
+
+## Dashboard fields that lie, and the one that doesn't
+
+| Field | Reading |
+| --- | --- |
+| **Agent run** (Channel → Threads) | Reads `—` even after a turn completes successfully. Not a health signal. |
+| **AGENT** (Channel → Overview) | Reads *Not declared* even while your agent is serving turns. Not a health signal. |
+| `…:activation` pseudo-thread | Means the runtime activated, not that anyone was answered. |
+| **Usage** tab | **This is the ground truth.** `Completed turns` / `Inbound` / `Outbound` / `quota blocked`. A completed turn with non-zero Outbound means Slack received a reply. |
+
+If Inbound is 0 while your process is `online`, the failure is upstream of
+Intelligence — go back to the Slack layer and check the Request URL.
+
+## Startup failures before any Slack involvement
+
+| Symptom | Cause |
+| --- | --- |
+| `EADDRINUSE :::3000` or `[Errno 48] Address already in use` on 8123 | Another checkout is already running. Identify it (`lsof -a -p <pid> -d cwd -Fn`), then run yours on other ports — `PORT`, `SERVER_PORT`, and a matching `AGENT_URL`. Do not kill a process you did not start. See `local-runtime.md`. |
+| `Missing required env var: AGENT_URL` (or `INTELLIGENCE_API_KEY`) | Expected and useful — the parser fails loud by name. Prefer leaving a value *empty* over filling a placeholder like `cpk-...`, which passes the presence check and fails later as an opaque auth error. |
+| `pnpm check-types` fails on `PlatformUser` / `ProviderActor.kind` / `Channel.provider` | OpenTag `main` type-drift against its own pinned `@copilotkit/channels`. Types-only — `tsx` strips them and the runtime is unaffected. Not your setup; do not "fix" it mid-setup. |
+| Slack manifest editor: "We can't translate a manifest with errors", no field named | An empty string somewhere — usually `usage_hint: ""`. Delete the key. The editor also auto-closes brackets, so paste minified single-line JSON. |
 
 ## Agent layer
 

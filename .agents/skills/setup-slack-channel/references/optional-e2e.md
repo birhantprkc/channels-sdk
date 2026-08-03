@@ -33,6 +33,14 @@ their workspace. It must be obtained through their approved app-management flow
 and typed in by them. Never ask for it, never read its value, never suggest a
 workaround for getting one.
 
+**The Channel wizard's manifest declares no user scopes**, so a managed app has no
+`xoxp-` token to collect. Running this harness therefore means adding a
+`chat:write` **user** scope to the app and reinstalling — which rotates the bot
+token and requires re-entering it in the adapter. Say that cost out loud before
+starting, and treat it as a deliberate, separately-approved change rather than a
+step of the main workflow. If the developer does not want to touch the working
+app's scopes, that is a good reason to skip this phase entirely.
+
 The starter states its own boundary explicitly: the repository intentionally
 contains no browser automation that edits the manifest, reinstalls the app, or
 extracts tokens. Respect that — do not add any.
