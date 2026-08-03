@@ -94,7 +94,7 @@ function makeAgent(threadId: string) {
 
 const channel = createChannel({
   name: required("CHANNEL_CODE"),
-  provider: "slack",
+  identifyUser: "platform",
   agent: makeAgent,
 });
 

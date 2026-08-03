@@ -3,23 +3,30 @@
   "evals": [
     {
       "id": 0,
-      "name": "slack-oncall",
+      "name": "slack-oncall-managed",
       "prompt": "I'm building a Slack bot for my team using the CopilotKit Channels SDK (@copilotkit/channels). When someone @mentions it, it should answer using our agent. It also needs a tool that looks up who is currently on call for a given team name. Write the complete bot setup code in TypeScript and save it as bot.ts.",
-      "expected_output": "A bot.ts using createBot with a slack adapter, agent factory, defineBotTool for on-call lookup with a Standard Schema, and bot.onMention that calls thread.runAgent(). No invented APIs.",
+      "expected_output": "A bot.ts using createChannel (NOT createBot) with the required identifyUser, an agent factory (threadId) => agent, and defineChannelTool (NOT defineBotTool) for the on-call lookup with a Standard Schema. bot.onMention calls thread.runAgent(). Nothing in the prompt says the developer holds the Slack tokens, so the managed path is the expected answer: NO adapters array, and `name` from the Intelligence Channel code. A direct slack({ botToken, appToken }) adapter is acceptable only if the output also explains it is the secondary path; inventing an adapter to 'connect Slack' is a fail. Because there is no bot.start(), startup must go through CopilotRuntime({ agents: {}, intelligence, channels: [bot] }) + createCopilotNodeListener, then gate on listener.channels.status().overall === 'online' (ready() alone is not proof of life). No invented APIs.",
       "files": []
     },
     {
       "id": 1,
-      "name": "hitl-confirm",
-      "prompt": "Using the CopilotKit Channels SDK, I want a confirmation with Approve and Cancel buttons before my bot runs a destructive tool that deletes a database. Show me the code for the tool that renders the human-in-the-loop confirmation and only proceeds if the user approves. Save it as delete-tool.ts.",
-      "expected_output": "A defineBotTool whose handler calls thread.awaitChoice with an Actions/Button tree (values true/false) and only deletes on approval. Uses channels-ui components.",
+      "name": "slack-oncall-direct",
+      "prompt": "I'm building a Slack bot with the CopilotKit Channels SDK (@copilotkit/channels). I already have my own Slack app and I hold the bot and app tokens myself — I don't want CopilotKit holding the Slack credentials. When someone @mentions the bot it should answer using our agent. Write the setup code in TypeScript and save it as bot.ts.",
+      "expected_output": "The direct-adapter path, because the prompt establishes that the developer owns the platform connection: createChannel with identifyUser and adapters: [slack({ botToken, appToken })] imported from @copilotkit/channels/slack, plus defaultSlackTools / defaultSlackContext. Should still attach the Channel to CopilotRuntime with an intelligence connection and create the listener — a direct adapter does NOT remove the runtime or the Intelligence requirement. Claiming the direct adapter runs standalone, or calling bot.start(), is a fail.",
       "files": []
     },
     {
       "id": 2,
+      "name": "hitl-confirm",
+      "prompt": "Using the CopilotKit Channels SDK, I want a confirmation with Approve and Cancel buttons before my bot runs a destructive tool that deletes a database. Show me the code for the tool that renders the human-in-the-loop confirmation and only proceeds if the user approves. Save it as delete-tool.tsx.",
+      "expected_output": "A defineChannelTool (NOT defineBotTool) whose handler calls thread.awaitChoice<boolean> with an Actions/Button tree (values true/false, style primary/danger) and only deletes on approval. Components imported from @copilotkit/channels (the root import re-exports them) — importing from @copilotkit/channels-ui is a miss unless that package is added as a direct dependency. No lowercase intrinsic tags (<b>, <span>): emphasis goes inside <Markdown>. File is .tsx because it contains JSX; should mention or assume jsxImportSource: \"@copilotkit/channels\". The handler should return a short natural-language result for the agent, not { ok: true }.",
+      "files": []
+    },
+    {
+      "id": 3,
       "name": "hn-top",
-      "prompt": "Build a CopilotKit Channels SDK slash command called /top that posts the top 5 Hacker News stories as one interactive message. Each story should show its title and points, with a button that opens the story link. Include the Hacker News fetch. Save it as top-command.ts.",
-      "expected_output": "bot.onCommand('top', ...) (or defineBotCommand) that fetches HN top stories and posts a Message with per-story Section/Fields and a link Button (url=...). Uses channels-ui JSX.",
+      "prompt": "Build a CopilotKit Channels SDK slash command called /top that posts the top 5 Hacker News stories as one interactive message. Each story should show its title and points, with a button that opens the story link. Include the Hacker News fetch. Save it as top-command.tsx.",
+      "expected_output": "bot.onCommand('top', ...) (or defineChannelCommand, NOT defineBotCommand) that fetches HN top stories and posts a Message with per-story Section/Fields and a link Button (url=...). JSX imported from @copilotkit/channels in a .tsx file. If the handler reads the command argument, it must come from ctx.text (raw) or ctx.options (typed) — ctx.args does not exist. Handler body must be a block that awaits thread.post, not a concise arrow returning it.",
       "files": []
     }
   ]

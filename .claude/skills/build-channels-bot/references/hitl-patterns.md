@@ -9,17 +9,18 @@ Use when *your code* wants to ask the user something and block on the answer.
 Common for confirming an irreversible action inside a tool handler.
 
 ```tsx
-import { Section, Actions, Button } from "@copilotkit/channels-ui";
+import { Message, Section, Markdown, Actions, Button } from "@copilotkit/channels";
+import type { Thread } from "@copilotkit/channels";
 
-async function confirmDeploy(thread, env: string) {
+async function confirmDeploy(thread: Thread, env: string) {
   const ok = await thread.awaitChoice<boolean>(
-    <Section>
-      Deploy to <b>{env}</b>? This is irreversible.
+    <Message accent="#E01E5A">
+      <Section><Markdown>Deploy to **{env}**? This is irreversible.</Markdown></Section>
       <Actions>
         <Button value={true} style="primary">Ship it</Button>
         <Button value={false} style="danger">Cancel</Button>
       </Actions>
-    </Section>,
+    </Message>,
   );
   return ok;
 }
@@ -27,8 +28,11 @@ async function confirmDeploy(thread, env: string) {
 
 - `awaitChoice<T>(ui)` posts `ui` and **blocks** until the user activates a
   control, resolving to that control's `value` (typed as `T`).
+- There are **no lowercase intrinsic tags** — this JSX runtime declares an empty
+  `IntrinsicElements`, so `<b>`, `<span>`, `<div>` are compile errors. Emphasis
+  goes inside `<Markdown>`.
 - Because a tool handler gets the live `thread`, you can call `awaitChoice`
-  directly inside `defineBotTool(...).handler` to gate the tool on approval.
+  directly inside `defineChannelTool(...).handler` to gate the tool on approval.
 
 ## 2. `onInterrupt` + `resume` — the agent pauses
 
@@ -56,13 +60,29 @@ Interactive handlers are keyed by **content-stable IDs**:
 rendered control always produces the same ID, so a click maps back to the right
 handler.
 
-The binding itself lives in an **`ActionStore`**:
+The binding itself lives in the configured store:
 
-- Default is `InMemoryActionStore` — ephemeral; bindings are lost on restart, so
-  a button clicked after a redeploy won't resolve.
-- For durability, implement the `ActionStore` interface (persist to Redis,
-  Postgres, etc.) and pass it as `createBot({ actionStore })`. Then handlers on
-  **registered components** survive restarts.
+- Default is the in-memory `MemoryStore` — ephemeral; bindings are lost on
+  restart, so a button clicked after a redeploy won't resolve.
+- For durability, implement the `StateStore` interface (persist to Redis,
+  Postgres, etc.) and pass it as `createChannel({ store: { adapter } })`:
+
+  ```ts
+  const bot = createChannel({
+    identifyUser: "platform",
+    store: {
+      adapter: myRedisStore,
+      actionRetentionMs: 7 * 24 * 60 * 60 * 1000, // default 7 days
+    },
+    components: [IssueCard], // register components so handlers can be re-bound
+  });
+  ```
+
+  `createChannel({ actionStore })` still works but is **deprecated** — prefer
+  `store.adapter`.
+- Durability also requires registering the component via
+  `createChannel({ components })`. Without registration, a click on a message
+  posted before the restart degrades to "action expired".
 
 Rule of thumb: for a demo or a short-lived prompt, in-memory is fine. For buttons
 that must work hours later or across deploys, configure a durable store and use

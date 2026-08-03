@@ -25,7 +25,7 @@ Decode raw platform payloads into these before handing them to the sink.
 
 ### Egress — render the IR
 
-Given `BotNode[]` (the lowered JSX tree), render to the platform:
+Given `ChannelNode[]` (the lowered JSX tree), render to the platform:
 
 - `post(target, nodes)` → create a message, return a `MessageRef`.
 - `update(ref, nodes)` → edit an existing message.
@@ -70,7 +70,7 @@ decoding, socket-mode ingress).
 ## Testing an adapter
 
 Because the engine is platform-agnostic, you can exercise a new adapter with the
-same bot you'd run on Slack: swap the adapter in `createBot({ adapters: [...] })`
+same bot you'd run on Slack: swap the adapter in `createChannel({ adapters: [...] })`
 and confirm each IR node type renders (or degrades) correctly, that interactions
 round-trip back to their handlers, and that the content-stable IDs survive the
 decode path.
