@@ -13,14 +13,18 @@ Codex, Cursor, Gemini, and others) with the CopilotKit CLI. This is the default
 path for a developer setting up Slack:
 
 ```sh
-npx copilotkit skills install --skill setup-slack-channel
+npx copilotkit@latest skills install --skill setup-slack-channel
 ```
 
 Or install every CopilotKit skill:
 
 ```sh
-npx copilotkit skills install
+npx copilotkit@latest skills install
 ```
+
+Always relay these with `@latest`. A bare `copilotkit` resolves to whatever is
+already on PATH or in the npx cache, and an older CLI fails with
+`Unknown option '--skill'`.
 
 | Skill | Use it when |
 | --- | --- |

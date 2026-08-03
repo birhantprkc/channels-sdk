@@ -54,16 +54,18 @@ Your agent and application logic run in your infrastructure. CopilotKit Intellig
 Slack setup spans a Slack app, a workspace install, a managed Channel, and a local runtime. Install the `setup-slack-channel` skill and your coding agent walks all of it with you:
 
 ```sh
-npx copilotkit skills install --skill setup-slack-channel
+npx copilotkit@latest skills install --skill setup-slack-channel
 ```
 
 Or install every CopilotKit skill at once:
 
 ```sh
-npx copilotkit skills install
+npx copilotkit@latest skills install
 ```
 
 Then ask your agent to set up Slack. The steps below are the same path, done by hand.
+
+> **`Unknown option '--skill'`?** An older `copilotkit` — globally installed or left in the npx cache — is shadowing the current CLI. Keep the `@latest`; that is what forces npx to fetch the current version instead of reusing what it already has.
 
 ### 1. Configure the connection
 
@@ -251,7 +253,7 @@ Use it to study a complete application with:
 | I want to…                        | Start here                                                                                            |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Experience Channels without setup | [Try Channels](https://www.copilotkit.ai/try-channels)                                                |
-| Set up Slack with my coding agent | `npx copilotkit skills install --skill setup-slack-channel`                                           |
+| Set up Slack with my coding agent | `npx copilotkit@latest skills install --skill setup-slack-channel`                                    |
 | Build my first Channel            | [Channels documentation](https://docs.copilotkit.ai/channels)                                         |
 | Inspect the SDK implementation    | [Channels source in CopilotKit](https://github.com/CopilotKit/CopilotKit/tree/main/packages/channels) |
 | Install the package               | [`@copilotkit/channels` on npm](https://www.npmjs.com/package/@copilotkit/channels)                   |
