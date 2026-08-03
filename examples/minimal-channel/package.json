@@ -1,0 +1,26 @@
+{
+  "name": "minimal-channel",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "The smallest complete CopilotKit Channels listener.",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsx server.ts",
+    "dev": "tsx watch server.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.4",
+  "dependencies": {
+    "@ag-ui/client": "^0.0.57",
+    "@copilotkit/channels": "0.2.0",
+    "@copilotkit/runtime": "1.63.0",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}
