@@ -57,7 +57,7 @@ Building a Channels agent spans a project, an agent, a managed Channel, a provid
 npx copilotkit@latest channels setup
 ```
 
-That copies a prompt to your clipboard. Paste it into your coding agent.
+That installs the `channels-setup` skill and copies a prompt to your clipboard. Paste it into your coding agent.
 
 <details>
 <summary><strong>The prompt it copies</strong></summary>
@@ -65,10 +65,11 @@ That copies a prompt to your clipboard. Paste it into your coding agent.
 <br>
 
 ```text
-Read https://copilotkit.ai/channels-guide.md and help the user build their first channel
+Use the `channels-setup` skill to set up a Channel for this project.
 ```
 
-The guide asks which platform you want — Slack or Microsoft Teams — and which agent framework, so there is nothing to substitute here. It is fetched when your agent needs it, so it is always the current workflow.
+The skill is a pointer: it fetches the hosted guide at
+[copilotkit.ai/channels-guide.md](https://copilotkit.ai/channels-guide.md), which carries the actual workflow. The guide asks which platform you want — Slack or Microsoft Teams — and which agent framework, so there is nothing to substitute here. Because it is fetched when your agent needs it, the workflow is always current even if the installed skill is months old.
 
 </details>
 
@@ -85,7 +86,7 @@ npx copilotkit@latest skills install --skill setup-slack-channel -y
 
 `-y` installs that one skill without opening a picker. The skill is scoped to Slack — for Microsoft Teams, use the guide above.
 
-Most of this setup happens in a **browser**, in your own signed-in session: creating the Slack app, attaching the Slack adapter, issuing an API key, and reading Channel status exist only in the Slack and Intelligence consoles. Your agent drives those consoles with you. You type the bot token and signing secret yourself — credentials stay with you.
+The CLI covers the Intelligence side: `copilotkit channels add --adapter slack` declares the Channel and attaches the adapter, and `copilotkit channels status` compares your configuration, your code, and the server. What still happens in a **browser**, in your own signed-in session, is the provider side — creating the Slack app and installing it into a workspace — plus issuing the project API key. Your agent drives those consoles with you. You type the bot token and signing secret yourself; no CLI flag accepts a credential value, so they stay in your `.env` and with you.
 
 > **`Unknown option '--skill'`?** An older `copilotkit` — globally installed or left in the npx cache — is shadowing the current CLI. Keep the `@latest`; that is what forces npx to fetch the current version instead of reusing what it already has.
 
