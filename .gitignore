@@ -24,3 +24,10 @@ pnpm-debug.log*
 .idea/
 .vscode/
 *.swp
+
+# Skills fetched from the CopilotKit registry, not owned here (see AGENTS.md).
+# `skills install` writes into these paths; committing what it writes is how the
+# vendored setup-slack-channel copy drifted ~16 KB behind its single home.
+/.agents/skills/setup-slack-channel/
+/agent/
+/skills-lock.json
