@@ -49,21 +49,21 @@ Choose a platform, join the experience, and see how an agent handles context, to
 
 Your agent and application logic run in your infrastructure. CopilotKit Intelligence manages the platform connection and delivers each turn to your long-running Channels process.
 
-### Fastest path for Slack: install the skill and let your coding agent drive
+### Fastest path: install the skill and let your coding agent drive
 
-Slack setup spans a Slack app, a workspace install, a managed Channel, and a local runtime. Install the `setup-slack-channel` skill and your coding agent walks all of it with you:
+Building a Channels agent spans a project, an agent, a managed Channel, a provider app, and a long-running runtime. One skill walks all of it with you. Paste this into your coding agent:
 
-```sh
-npx copilotkit@latest skills install --skill setup-slack-channel
+```text
+Run `npx copilotkit@latest skills install --skill setup-slack-channel -y`,
+then follow that skill to build your first CopilotKit Channels agent
+and connect it to Slack.
 ```
 
-Or install every CopilotKit skill at once:
+Swap `Slack` for `Microsoft Teams` to target Teams instead.
 
-```sh
-npx copilotkit@latest skills install
-```
+`-y` installs that one skill without opening a picker, and the installer detects which coding agent it is running inside — so your agent can run the command itself rather than handing it back to you.
 
-Then ask your agent to set up Slack. The steps below are the same path, done by hand.
+The steps below are the same path, done by hand.
 
 > **`Unknown option '--skill'`?** An older `copilotkit` — globally installed or left in the npx cache — is shadowing the current CLI. Keep the `@latest`; that is what forces npx to fetch the current version instead of reusing what it already has.
 
@@ -191,29 +191,7 @@ When Intelligence reports **Online**, invite the app to a Slack channel and ment
 
 > Want Microsoft Teams, a different agent framework, interactive approvals, files, or production deployment guidance? Continue in the [Channels documentation](https://docs.copilotkit.ai/channels).
 
-<details>
-<summary><b>Build it with your coding agent</b></summary>
-
-Copy this prompt into your coding agent:
-
-```text
-Add a managed CopilotKit Channels listener to this project.
-
-Use @copilotkit/channels and @copilotkit/runtime with a
-CopilotKitIntelligence connection. The process must create a Channel whose
-name comes from CHANNEL_CODE, attach it to CopilotRuntime, create the
-framework-appropriate runtime listener, call channels.ready(), verify
-channels.status(), and stop Channels during graceful shutdown.
-
-Connect my existing agent through an AG-UI-compatible agent factory. Keep the
-agent, tools, and application logic in this project; CopilotKit Intelligence
-owns the Slack or Microsoft Teams connection.
-
-Use the current APIs and setup instructions from:
-https://docs.copilotkit.ai/channels
-```
-
-</details>
+> **Rather have your agent do it?** Use the prompt from [Fastest path](#fastest-path-install-the-skill-and-let-your-coding-agent-drive) above. It installs the `setup-slack-channel` skill, which covers this same setup plus the provider and verification steps.
 
 ## How it works
 
@@ -250,16 +228,16 @@ Use it to study a complete application with:
 
 ## Developer resources
 
-| I want to…                        | Start here                                                                                            |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Experience Channels without setup | [Try Channels](https://www.copilotkit.ai/try-channels)                                                |
-| Set up Slack with my coding agent | `npx copilotkit@latest skills install --skill setup-slack-channel`                                    |
-| Build my first Channel            | [Channels documentation](https://docs.copilotkit.ai/channels)                                         |
-| Inspect the SDK implementation    | [Channels source in CopilotKit](https://github.com/CopilotKit/CopilotKit/tree/main/packages/channels) |
-| Install the package               | [`@copilotkit/channels` on npm](https://www.npmjs.com/package/@copilotkit/channels)                   |
-| Study a complete application      | [OpenTag](https://github.com/CopilotKit/OpenTag)                                                      |
-| Connect an existing agent         | [AG-UI integrations](https://docs.ag-ui.com/introduction)                                             |
-| Understand the protocol           | [AG-UI](https://github.com/ag-ui-protocol/ag-ui)                                                      |
+| I want to…                           | Start here                                                                                            |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Experience Channels without setup    | [Try Channels](https://www.copilotkit.ai/try-channels)                                                |
+| Build a Channel with my coding agent | `npx copilotkit@latest skills install --skill setup-slack-channel -y`                                 |
+| Build my first Channel               | [Channels documentation](https://docs.copilotkit.ai/channels)                                         |
+| Inspect the SDK implementation       | [Channels source in CopilotKit](https://github.com/CopilotKit/CopilotKit/tree/main/packages/channels) |
+| Install the package                  | [`@copilotkit/channels` on npm](https://www.npmjs.com/package/@copilotkit/channels)                   |
+| Study a complete application         | [OpenTag](https://github.com/CopilotKit/OpenTag)                                                      |
+| Connect an existing agent            | [AG-UI integrations](https://docs.ag-ui.com/introduction)                                             |
+| Understand the protocol              | [AG-UI](https://github.com/ag-ui-protocol/ag-ui)                                                      |
 
 ## License
 
