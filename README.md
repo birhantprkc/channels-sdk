@@ -51,13 +51,45 @@ Your agent and application logic run in your infrastructure. CopilotKit Intellig
 
 ### Fastest path: let your coding agent drive
 
-Building a Channels agent spans a project, an agent, a managed Channel, a provider app, and a long-running runtime. One guide walks your agent through all of it. Paste this into your coding agent:
+Building a Channels agent spans a project, an agent, a managed Channel, a provider app, and a long-running runtime. One guide walks your agent through all of it.
+
+```sh
+npx copilotkit@latest channels setup
+```
+
+That copies a prompt to your clipboard. Paste it into your coding agent.
+
+<details>
+<summary><strong>The prompt it copies</strong></summary>
+
+<br>
 
 ```text
 Read https://copilotkit.ai/channels-guide.md and help the user build their first channel
 ```
 
 The guide asks which platform you want — Slack or Microsoft Teams — and which agent framework, so there is nothing to substitute here. It is fetched when your agent needs it, so it is always the current workflow.
+
+</details>
+
+<details>
+<summary><strong>Or install the setup skill directly</strong></summary>
+
+<br>
+
+Put the Slack setup workflow on disk in the coding agent you are already running in:
+
+```sh
+npx copilotkit@latest skills install --skill setup-slack-channel -y
+```
+
+`-y` installs that one skill without opening a picker. The skill is scoped to Slack — for Microsoft Teams, use the guide above.
+
+Most of this setup happens in a **browser**, in your own signed-in session: creating the Slack app, attaching the Slack adapter, issuing an API key, and reading Channel status exist only in the Slack and Intelligence consoles. Your agent drives those consoles with you. You type the bot token and signing secret yourself — credentials stay with you.
+
+> **`Unknown option '--skill'`?** An older `copilotkit` — globally installed or left in the npx cache — is shadowing the current CLI. Keep the `@latest`; that is what forces npx to fetch the current version instead of reusing what it already has.
+
+</details>
 
 The steps below are the same path, done by hand.
 
@@ -185,7 +217,7 @@ When Intelligence reports **Online**, invite the app to a Slack channel and ment
 
 > Want Microsoft Teams, a different agent framework, interactive approvals, files, or production deployment guidance? Continue in the [Channels documentation](https://docs.copilotkit.ai/channels).
 
-> **Rather have your agent do it?** Use the prompt from [Fastest path](#fastest-path-let-your-coding-agent-drive) above. The guide covers this same setup plus the provider and verification steps.
+> **Rather have your agent do it?** Run `npx copilotkit@latest channels setup` from [Fastest path](#fastest-path-let-your-coding-agent-drive) above. The guide covers this same setup plus the provider and verification steps.
 
 ## How it works
 
@@ -225,7 +257,7 @@ Use it to study a complete application with:
 | I want to…                           | Start here                                                                                            |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | Experience Channels without setup    | [Try Channels](https://www.copilotkit.ai/try-channels)                                                |
-| Build a Channel with my coding agent | [Channels guide for coding agents](https://copilotkit.ai/channels-guide.md)                           |
+| Build a Channel with my coding agent | `npx copilotkit@latest channels setup`                                                                |
 | Build my first Channel               | [Channels documentation](https://docs.copilotkit.ai/channels)                                         |
 | Inspect the SDK implementation       | [Channels source in CopilotKit](https://github.com/CopilotKit/CopilotKit/tree/main/packages/channels) |
 | Install the package                  | [`@copilotkit/channels` on npm](https://www.npmjs.com/package/@copilotkit/channels)                   |
