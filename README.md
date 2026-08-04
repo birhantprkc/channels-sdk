@@ -57,13 +57,20 @@ Building a Channels agent spans a project, an agent, a managed Channel, a provid
 npx copilotkit@latest channels setup
 ```
 
-That copies the prompt to your clipboard. Paste it into your coding agent:
+That copies a prompt to your clipboard. Paste it into your coding agent.
+
+<details>
+<summary><strong>The prompt it copies</strong></summary>
+
+<br>
 
 ```text
 Read https://copilotkit.ai/channels-guide.md and help the user build their first channel
 ```
 
 The guide asks which platform you want — Slack or Microsoft Teams — and which agent framework, so there is nothing to substitute here. It is fetched when your agent needs it, so it is always the current workflow.
+
+</details>
 
 <details>
 <summary><strong>Or install the setup skill directly</strong></summary>
