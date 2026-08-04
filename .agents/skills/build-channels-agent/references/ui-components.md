@@ -41,6 +41,66 @@ Children may be nested elements, strings, numbers, or conditionals
 | `<Select>` | `onSelect?`, `options: {label,value}[]`, `placeholder?`, `multi?` | `onSelect(ctx)` gets `ctx.action.value`: a `string`, or `string[]` when `multi`. Multi renders as `multi_static_select` (Slack), max-values (Discord), `isMultiSelect` (Teams); Telegram/WhatsApp degrade to single-select. |
 | `<Input>` | `onSubmit?`, `placeholder?`, `multiline?`, `name?` | `onSubmit(ctx)` gets `ctx.action.value` = the entered text. |
 
+## Modal components
+
+A modal is a **separate IR root** (`ModalView`), not a message. Build it with
+`<Modal>` and open it with `ctx.openModal(view)` from a `CommandContext` — it is
+`undefined` on surfaces with no trigger for it. Submissions and dismissals route
+back to `channel.onModalSubmit(callbackId, …)` / `channel.onModalClose(callbackId, …)`
+by `callbackId`, **not** to inline handlers. Return `{ errors }` from a submit
+handler to keep the modal open. An adapter throws `ModalRenderError` if the view
+uses an element its surface can't express — unlike message rendering, this is not
+skip-and-degrade.
+
+| Component | Props | Notes |
+| --- | --- | --- |
+| `<Modal>` | `callbackId: string`, `title: string`, `submitLabel?`, `closeLabel?`, `notifyOnClose?`, `privateMetadata?` | The view root. `notifyOnClose` makes Slack emit `view_closed`. `privateMetadata` is an opaque string echoed back to the handlers. |
+| `<TextInput>` | `id: string`, `label: string`, `placeholder?`, `multiline?`, `optional?`, `maxLength?`, `initialValue?` | Free-text field. Read it from `evt.values[id]`. |
+| `<ModalSelect>` | `id: string`, `label: string`, `placeholder?`, `optional?`, `initialOption?` | Children are `<ModalSelectOption>`. `initialOption` is an option's `value`. |
+| `<ModalSelectOption>` | `label: string`, `value: string` | |
+| `<RadioButtons>` | `id: string`, `label: string`, `optional?`, `initialOption?` | Children are `<ModalSelectOption>`. |
+
+### Call `Modal(...)`, don't write `<Modal>`
+
+This JSX runtime declares `JSX.Element = ChannelNode`, so **every** JSX expression
+is typed `ChannelNode` — which erases the `ModalView` narrowing that `openModal`
+requires. `<Modal …/>` therefore fails under `strict`:
+
+```
+error TS2345: Argument of type 'ChannelNode' is not assignable to parameter of type 'ModalView'.
+```
+
+Call the component as a plain function and pass `children` as a prop. Its children
+can still be JSX, because only the root needs to stay a `ModalView`:
+
+```tsx
+channel.onCommand("feedback", async ({ openModal }) => {
+  await openModal?.(
+    Modal({
+      callbackId: "feedback",
+      title: "Send feedback",
+      submitLabel: "Send",
+      children: [
+        <TextInput id="body" label="What happened?" multiline />,
+        <RadioButtons id="severity" label="Severity">
+          <ModalSelectOption label="Blocking" value="high" />
+          <ModalSelectOption label="Annoying" value="low" />
+        </RadioButtons>,
+      ],
+    }),
+  );
+});
+
+channel.onModalSubmit("feedback", async ({ values, thread }) => {
+  if (!values.body) return { errors: { body: "Tell us what happened." } };
+  await thread?.post(<Section>Thanks — logged it.</Section>);
+});
+```
+
+`openModal` is optional on `CommandContext`, so keep the `?.` — and note `thread`
+is optional on `ModalSubmitEvent` too, since a submission may arrive without a
+conversation context.
+
 ## Handler context (onClick / onSelect / onSubmit / onReaction)
 
 Inline handlers receive a context with (at least) `{ action, thread, messageRef, user }`:
