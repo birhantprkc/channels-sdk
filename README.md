@@ -49,23 +49,17 @@ Choose a platform, join the experience, and see how an agent handles context, to
 
 Your agent and application logic run in your infrastructure. CopilotKit Intelligence manages the platform connection and delivers each turn to your long-running Channels process.
 
-### Fastest path: install the skill and let your coding agent drive
+### Fastest path: let your coding agent drive
 
-Building a Channels agent spans a project, an agent, a managed Channel, a provider app, and a long-running runtime. One skill walks all of it with you. Paste this into your coding agent:
+Building a Channels agent spans a project, an agent, a managed Channel, a provider app, and a long-running runtime. One guide walks your agent through all of it. Paste this into your coding agent:
 
 ```text
-Run `npx copilotkit@latest skills install --skill setup-slack-channel -y`,
-then follow that skill to build your first CopilotKit Channels agent
-and connect it to Slack.
+Read https://copilotkit.ai/channels-guide.md and help the user build their first channel
 ```
 
-Swap `Slack` for `Microsoft Teams` to target Teams instead.
-
-`-y` installs that one skill without opening a picker, and the installer detects which coding agent it is running inside — so your agent can run the command itself rather than handing it back to you.
+The guide asks which platform you want — Slack or Microsoft Teams — and which agent framework, so there is nothing to substitute here. It is fetched when your agent needs it, so it is always the current workflow.
 
 The steps below are the same path, done by hand.
-
-> **`Unknown option '--skill'`?** An older `copilotkit` — globally installed or left in the npx cache — is shadowing the current CLI. Keep the `@latest`; that is what forces npx to fetch the current version instead of reusing what it already has.
 
 ### 1. Configure the connection
 
@@ -191,7 +185,7 @@ When Intelligence reports **Online**, invite the app to a Slack channel and ment
 
 > Want Microsoft Teams, a different agent framework, interactive approvals, files, or production deployment guidance? Continue in the [Channels documentation](https://docs.copilotkit.ai/channels).
 
-> **Rather have your agent do it?** Use the prompt from [Fastest path](#fastest-path-install-the-skill-and-let-your-coding-agent-drive) above. It installs the `setup-slack-channel` skill, which covers this same setup plus the provider and verification steps.
+> **Rather have your agent do it?** Use the prompt from [Fastest path](#fastest-path-let-your-coding-agent-drive) above. The guide covers this same setup plus the provider and verification steps.
 
 ## How it works
 
@@ -231,7 +225,7 @@ Use it to study a complete application with:
 | I want to…                           | Start here                                                                                            |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | Experience Channels without setup    | [Try Channels](https://www.copilotkit.ai/try-channels)                                                |
-| Build a Channel with my coding agent | `npx copilotkit@latest skills install --skill setup-slack-channel -y`                                 |
+| Build a Channel with my coding agent | [Channels guide for coding agents](https://copilotkit.ai/channels-guide.md)                           |
 | Build my first Channel               | [Channels documentation](https://docs.copilotkit.ai/channels)                                         |
 | Inspect the SDK implementation       | [Channels source in CopilotKit](https://github.com/CopilotKit/CopilotKit/tree/main/packages/channels) |
 | Install the package                  | [`@copilotkit/channels` on npm](https://www.npmjs.com/package/@copilotkit/channels)                   |
