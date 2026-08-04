@@ -61,6 +61,24 @@ The guide asks which platform you want — Slack or Microsoft Teams — and whic
 
 The steps below are the same path, done by hand.
 
+### Or drive it from the CLI
+
+Two commands cover the same ground without pasting anything. Print the setup prompt and copy it to your clipboard:
+
+```sh
+npx copilotkit@latest channels setup
+```
+
+Or install the Slack onboarding skill directly into the coding agent you are already running in:
+
+```sh
+npx copilotkit@latest skills install --skill setup-slack-channel -y
+```
+
+`-y` installs that one skill without opening a picker. The skill is scoped to Slack — for Microsoft Teams, use the guide prompt above.
+
+> **`Unknown option '--skill'`?** An older `copilotkit` — globally installed or left in the npx cache — is shadowing the current CLI. Keep the `@latest`; that is what forces npx to fetch the current version instead of reusing what it already has.
+
 ### 1. Configure the connection
 
 [Create a Channel in CopilotKit Intelligence](https://docs.copilotkit.ai/channels) and connect Slack. Keep the Channel **Code** and project-scoped Intelligence API key for the next steps.
