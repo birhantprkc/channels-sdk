@@ -57,28 +57,18 @@ Building a Channels agent spans a project, an agent, a managed Channel, a provid
 npx copilotkit@latest channels setup
 ```
 
-That installs the `channels-setup` skill and copies a prompt to your clipboard. Paste it into your coding agent.
+That installs the `channels-setup` skill, prints a prompt, and copies it to your clipboard. Paste it into your coding agent.
+
+The skill is a pointer — it fetches the workflow from [copilotkit.ai/channels-guide.md](https://copilotkit.ai/channels-guide.md) when your agent needs it, so the steps are current even if the installed skill is months old. The guide asks which platform you want, Slack or Microsoft Teams, and which agent framework.
+
+Your agent drives the Slack and Intelligence consoles itself, in your own signed-in session. If it has no browser or computer-use tool yet, it will ask you to add one first — that is the intended path, not a fallback. You type the secrets; it does the clicking.
 
 <details>
-<summary><strong>The prompt it copies</strong></summary>
+<summary><strong>Or install the Slack setup skill on disk</strong></summary>
 
 <br>
 
-```text
-Use the `channels-setup` skill to set up a Channel for this project.
-```
-
-The skill is a pointer: it fetches the hosted guide at
-[copilotkit.ai/channels-guide.md](https://copilotkit.ai/channels-guide.md), which carries the actual workflow. The guide asks which platform you want — Slack or Microsoft Teams — and which agent framework, so there is nothing to substitute here. Because it is fetched when your agent needs it, the workflow is always current even if the installed skill is months old.
-
-</details>
-
-<details>
-<summary><strong>Or install the setup skill directly</strong></summary>
-
-<br>
-
-Put the Slack setup workflow on disk in the coding agent you are already running in:
+Skip the hosted guide and put the Slack workflow directly in the coding agent you are already running in:
 
 ```sh
 npx copilotkit@latest skills install --skill setup-slack-channel -y
@@ -86,7 +76,7 @@ npx copilotkit@latest skills install --skill setup-slack-channel -y
 
 `-y` installs that one skill without opening a picker. The skill is scoped to Slack — for Microsoft Teams, use the guide above.
 
-The CLI covers the Intelligence side: `copilotkit channels add --adapter slack` declares the Channel and attaches the adapter, and `copilotkit channels status` compares your configuration, your code, and the server. What still happens in a **browser**, in your own signed-in session, is the provider side — creating the Slack app and installing it into a workspace — plus issuing the project API key. Your agent drives those consoles with you. You type the bot token and signing secret yourself; no CLI flag accepts a credential value, so they stay in your `.env` and with you.
+The CLI covers the Intelligence side: `copilotkit channels add --adapter slack` declares the Channel and attaches the adapter, and `copilotkit channels status` compares your configuration, your code, and the server. What stays in the browser is the provider side — creating the Slack app and installing it into a workspace — plus issuing the project API key. No CLI flag accepts a credential value, so the bot token and signing secret stay in your `.env` and with you.
 
 > **`Unknown option '--skill'`?** An older `copilotkit` — globally installed or left in the npx cache — is shadowing the current CLI. Keep the `@latest`; that is what forces npx to fetch the current version instead of reusing what it already has.
 
