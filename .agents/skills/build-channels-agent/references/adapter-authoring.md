@@ -1,11 +1,11 @@
 # Writing a PlatformAdapter
 
 Read this only when the task is specifically "add Channels support for platform
-X" (a surface with no existing adapter). For normal bot building you never touch
+X" (a surface with no existing adapter). For normal Channel building you never touch
 this — you consume an adapter like `@copilotkit/channels-slack`.
 
 An adapter is the only platform-specific code. It translates between a platform's
-API and the engine's neutral message IR, so bot logic (handlers, tools, JSX)
+API and the engine's neutral message IR, so Channel logic (handlers, tools, JSX)
 stays unchanged across surfaces.
 
 ## The `PlatformAdapter` contract
@@ -51,7 +51,7 @@ run streams, so intermediate steps show up live.
 
 ### Capabilities
 
-Declare a `capabilities` object so the engine and bots can feature-detect.
+Declare a `capabilities` object so the engine and Channels can feature-detect.
 Optional capability methods to implement when the platform supports them:
 
 - `getMessages` — read conversation history (`thread.getMessages()`).
@@ -70,7 +70,7 @@ decoding, socket-mode ingress).
 ## Testing an adapter
 
 Because the engine is platform-agnostic, you can exercise a new adapter with the
-same bot you'd run on Slack: swap the adapter in `createChannel({ adapters: [...] })`
+same Channel you'd run on Slack: swap the adapter in `createChannel({ adapters: [...] })`
 and confirm each IR node type renders (or degrades) correctly, that interactions
 round-trip back to their handlers, and that the content-stable IDs survive the
 decode path.

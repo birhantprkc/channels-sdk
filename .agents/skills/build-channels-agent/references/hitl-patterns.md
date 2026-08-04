@@ -1,9 +1,9 @@
 # Human-in-the-loop patterns
 
-Channels bots can pause mid-run and wait for a human, then continue. There are
+A Channels agent can pause mid-run and wait for a human, then continue. There are
 two mechanisms; pick by where the pause originates.
 
-## 1. `awaitChoice` — the bot asks
+## 1. `awaitChoice` — your code asks
 
 Use when *your code* wants to ask the user something and block on the answer.
 Common for confirming an irreversible action inside a tool handler.
@@ -41,7 +41,7 @@ Use when the *agent* pauses itself (e.g. a LangGraph-style interrupt during
 `resume` with the value the agent expects.
 
 ```ts
-bot.onInterrupt<{ question: string }>("ask_human", async ({ thread, payload }) => {
+channel.onInterrupt<{ question: string }>("ask_human", async ({ thread, payload }) => {
   const answer = await thread.awaitChoice<string>(
     /* a <Select> or <Button> group built from payload.question */
   );
@@ -68,7 +68,7 @@ The binding itself lives in the configured store:
   Postgres, etc.) and pass it as `createChannel({ store: { adapter } })`:
 
   ```ts
-  const bot = createChannel({
+  const channel = createChannel({
     identifyUser: "platform",
     store: {
       adapter: myRedisStore,
