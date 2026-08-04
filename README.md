@@ -54,7 +54,9 @@ Your agent and application logic run in your infrastructure. CopilotKit Intellig
 Building a Channels agent spans a project, an agent, a managed Channel, a provider app, and a long-running runtime. One skill walks all of it with you. Paste this into your coding agent:
 
 ```text
-Run `npx copilotkit@latest skills install --skill setup-slack-channel -y`, then follow that skill to build your first CopilotKit Channels agent and connect it to Slack.
+Run `npx copilotkit@latest skills install --skill setup-slack-channel -y`,
+then follow that skill to build your first CopilotKit Channels agent
+and connect it to Slack.
 ```
 
 Swap `Slack` for `Microsoft Teams` to target Teams instead.
@@ -229,7 +231,7 @@ Use it to study a complete application with:
 | I want to…                           | Start here                                                                                            |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | Experience Channels without setup    | [Try Channels](https://www.copilotkit.ai/try-channels)                                                |
-| Build a Channel with my coding agent | `npx copilotkit@latest skills install --skill setup-slack-channel -y`                               |
+| Build a Channel with my coding agent | `npx copilotkit@latest skills install --skill setup-slack-channel -y`                                 |
 | Build my first Channel               | [Channels documentation](https://docs.copilotkit.ai/channels)                                         |
 | Inspect the SDK implementation       | [Channels source in CopilotKit](https://github.com/CopilotKit/CopilotKit/tree/main/packages/channels) |
 | Install the package                  | [`@copilotkit/channels` on npm](https://www.npmjs.com/package/@copilotkit/channels)                   |
