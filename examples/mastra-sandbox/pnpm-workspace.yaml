@@ -1,0 +1,6 @@
+allowBuilds:
+  '@scarf/scarf': false
+  esbuild: true
+overrides:
+  '@ag-ui/client': 0.0.57
+  '@ag-ui/core': 0.0.57
