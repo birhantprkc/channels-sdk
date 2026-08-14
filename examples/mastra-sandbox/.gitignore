@@ -1,0 +1,8 @@
+node_modules/
+.env
+
+# Files the demo agent creates locally.
+sandbox/*
+!sandbox/README.md
+!sandbox/skills/
+!sandbox/skills/**

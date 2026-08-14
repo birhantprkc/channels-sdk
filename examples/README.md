@@ -1,5 +1,15 @@
 # Examples
 
+## Mastra Sandbox
+
+[`mastra-sandbox`](./mastra-sandbox/) connects a Mastra agent to a managed Slack
+Channel. It demonstrates a local workspace and command sandbox, discoverable
+skills, structured command logs, an unsubscribe tool, and an agent-rendered bar
+chart.
+
+The example is self-contained and includes a short setup guide and verification
+suite.
+
 ## OpenTag
 
 [**OpenTag**](https://github.com/CopilotKit/OpenTag) is the flagship application
